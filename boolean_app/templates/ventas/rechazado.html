@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block container %}
+<div id="cont" class="container">
+<div class="page_header"><h1>Facturación    <small>Comprobante Rechazado</small></h1></div> 
+	<div class="row">
+		<div class="col-md-12"><h3>El comprobante ha sido rechazado.</h3></div>
+	</div>
+	<div class="row">
+		<div class="col-md-12">
+			<h4><strong>Errores:</strong></h4>
+		</div>
+		<div class="col-md-12">
+			<ul>
+			{% for o in obs %}
+			<li>{{o}}</li>
+			{% endfor %}
+			{% for e in err %}
+			<li>{{e}}</li>
+			{% endfor %}
+			</ul>
+		</div>
+	</div>
+	<div class="row">
+		<div class="col-md-12">
+			<a href="{% url 'home' %}" class="btn btn-primary" role="button">Cerrar</a>
+	    </div>
+	</div>	
+</div>
+{% endblock %}

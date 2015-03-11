@@ -1,0 +1,56 @@
+{% extends "base.html" %} 
+{% load staticfiles %}
+{% block headExtras %}
+	<link rel="stylesheet" href="//ajax.googleapis.com/ajax/libs/jqueryui/1.11.1/themes/smoothness/jquery-ui.css" />
+	<script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.11.1/jquery-ui.min.js"></script>
+    <script>
+    $(document).ready(function () {
+    	
+    	$.datepicker.regional['es'] = {
+    			closeText: 'Cerrar',
+    	        prevText: '<Ant',
+    	        nextText: 'Sig>',
+    	        currentText: 'Hoy',
+    	        monthNames: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'],
+    	        monthNamesShort: ['Ene','Feb','Mar','Abr', 'May','Jun','Jul','Ago','Sep', 'Oct','Nov','Dic'],
+    	        dayNames: ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'],
+    	        dayNamesShort: ['Dom','Lun','Mar','Mié','Juv','Vie','Sáb'],
+    	        dayNamesMin: ['Do','Lu','Ma','Mi','Ju','Vi','Sá'],
+    	        weekHeader: 'Sm',
+    	        dateFormat: 'dd/mm/yy',
+    	        firstDay: 1,
+    	        isRTL: false,
+    	        showMonthAfterYear: false,
+    	        yearSuffix: ''
+    	    }
+    	    $.datepicker.setDefaults($.datepicker.regional['es']);
+    	
+    	
+    	$("#id_fecha_desde").datepicker();
+    	$("#id_fecha_hasta").datepicker();
+    });
+    
+
+</script>
+    <style type="text/css">
+#cont {  
+  width: 900px;  
+  margin-left: auto;  
+  margin-right: auto;
+}
+</style>{% endblock %} 
+
+{% block container %}
+    <div id="cont">
+      <form action="" method="POST">{% csrf_token %}
+        {{ventast.non_field_errors}}
+        <div class="params">
+          <div id="fechas">
+          {{ventast.fecha_desde.errors}}
+          <label for="id_fecha_desde">Fecha desde:</label>{{ventast.fecha_desde}}
+          {{ventast.fecha_hasta.errors}}
+          <label for="id_fecha_hasta">Fecha hasta:</label>{{ventast.fecha_hasta}}
+          </div>
+        </div>
+        <input value="ACEPTAR" type="submit"></form> 
+    {% endblock %}

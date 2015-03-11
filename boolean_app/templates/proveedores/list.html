@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block headExtras %}
+<script src="//cdn.datatables.net/1.10.2/js/jquery.dataTables.min.js"></script>
+<script src="//cdn.datatables.net/plug-ins/380cb78f450/integration/bootstrap/3/dataTables.bootstrap.js"></script>
+<link rel="stylesheet" href="//cdn.datatables.net/plug-ins/380cb78f450/integration/bootstrap/3/dataTables.bootstrap.css" />
+
+<style type="text/css">
+body { font-size: 140%; }
+</style>
+
+<script>
+
+$(document).ready(function() {
+    var table=$('#proveedores').DataTable( {
+    	"columns": [
+    	            {
+    	                "class":          'details-control glyphicon glyphicon-eye-open',
+    	                "orderable":      false,
+    	                "data":           null,
+    	                "defaultContent": '',
+    	            },
+    	            {"orderable":      true,},
+    	            {"orderable":      false,},
+    	            {"orderable":      false,},
+    	            {"orderable":      false,},
+    	        ],		
+    	"language": {
+                "url": "//cdn.datatables.net/plug-ins/725b2a2115b/i18n/Spanish.json"
+        			},
+        				"processing": true,
+        				"serverSide": true,
+        				"ajax": {
+        					"url": "{% url "pro_datatables" %}",
+        				}
+    } );
+    
+    $('#proveedores tbody').on('click', 'td.details-control', function () {
+        var tr = $(this).closest('tr');
+        var row = table.row( tr );
+ 
+        if ( row.child.isShown() ) {
+            // This row is already open - close it
+            row.child.hide();
+            $(this).removeClass('glyphicon glyphicon-eye-close').addClass('glyphicon glyphicon-eye-open');
+        }
+        else {
+            // Open this row
+            console.log(row.data());
+            row.child(row.data()[0]).show();
+            $(this).removeClass('glyphicon glyphicon-eye-open').addClass('glyphicon glyphicon-eye-close');
+        }
+    } );
+    
+    $("#proveedores thead th:first").removeClass("glyphicon glyphicon-eye-open");
+} );
+
+</script>
+
+{% endblock %}
+
+{% block container %}
+<div id="cont" class="container">
+<a href="{% url "nuevoProveedor" %}" class="btn btn-primary" role="button">Nuevo</a>
+
+<table id="proveedores" class="table table-striped">
+	<thead><tr>
+		<th></th>
+		<th>Razón Social</th>
+		<th>Dirección</th>
+		<th>Teléfono</th>
+		<th>Acciones</th>
+	</tr></thead>
+	
+	<tfoot><tr>
+		<th></th>
+		<th>Denominación</th>
+		<th>Dirección</th>
+		<th>Teléfono</th>
+		<th>Acciones</th>
+	</tr></tfoot>
+</table>
+</div>
+{% endblock %}

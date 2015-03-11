@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta content="text/html; charset=UTF-8" http-equiv="content-type">
+    <title>Sistema Contable - Login</title>
+    <style type="text/css">
+#body {  
+  background-color: #4b99b5;  
+  border-top-style: none;  
+  border-right-style: none;  
+  border-bottom-style: none;  
+  border-left-style: none;  
+  border-top-color: white;  
+  border-right-color: white;  
+  border-bottom-color: white;  
+  border-left-color: white;
+}
+
+#bloq_login {  
+  background-color: #f4f4f4;  
+  width: 400px;  
+  height: 280px;  
+  float: left;  
+  position: absolute;  
+  visibility: visible;  
+  display: block;  
+  margin-top: -75px;  
+  margin-right: auto;  
+  margin-bottom: auto;  
+  margin-left: -150px;  
+  top: 180px;  
+  left: 50%;  
+  border-top-color: #4b39c5;  
+  border-right-color: #4b39c5;  
+  border-bottom-color: #4b39c5;  
+  border-left-color: #4b39c5;  
+  border-top-style: solid;  
+  border-right-style: solid;  
+  border-bottom-style: solid;  
+  border-left-style: solid;  -webkit-border-radius: 10px 10px 10px 10px;
+  border-radius: 10px 10px 10px 10px;  -webkit-box-shadow: 0px 0px 8px 3px #4b39c5;
+  box-shadow: 0px 0px 8px 3px #4b39c5;
+}
+
+.field {  
+  width: 100px;  
+  float: left;
+}
+
+</style></head>
+  <body style="            background-color: #4b99b5;" id="body"> 
+    <div id="bloq_login"> {% if form.errors %}
+      <p class="error">Usuario o contrase�a incorrectos. Reintente por favor.</p>
+      {% endif %}
+      <form action="" method="post">
+        <div> {% csrf_token %}
+          <p><label class="field">Usuario:</label><input name="username" value=""
+              id="username" type="text"></p>
+          <p><label class="field">Password:</label><input name="password" value=""
+              id="password" type="password"></p>
+          <input value="Entrar" type="submit"> <input name="next" value="{{ next|escape }}"
+            type="hidden"> </div>
+      </form>
+    </div>
+  </body>
+</html>

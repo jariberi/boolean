@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block container %}
+
+<a href="{% url "nuevoCondPago" %}">Nuevo</a>
+
+<table border="1">
+	<thead><tr>
+		<th>Descripcion</th>
+		<th>Acciones</th>
+	</thead></tr>
+	{% for cp in object_list %}
+	<tr>
+		<td>{{cp.descripcion}}</td>
+		<td><a href="{% url "editarCondPago" cp.id %}">EDITAR</a>  --  <a href="{% url "borrarCondPago" cp.id %}">BORRAR</a></td>
+	</tr>
+	{% empty %}
+	<h2>No hay condiciones de pago todavía</h2>
+	{% endfor %}
+</table>
+
+{% endblock %}

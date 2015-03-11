@@ -1,0 +1,968 @@
+{% extends "base.html" %} 
+{% load staticfiles %}
+{% block headExtras %}
+    <link rel="stylesheet" href="{% static "css/chosen.css" %}" type="text/css">
+    <script src="{% static "js/chosen.jquery.js" %}" type="text/javascript"></script>
+    <script src="{% static "js/jquery.spin.js" %}" type="text/javascript"></script>
+    <link rel="stylesheet" href="//ajax.googleapis.com/ajax/libs/jqueryui/1.11.1/themes/smoothness/jquery-ui.css" />
+	<script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.11.1/jquery-ui.min.js"></script>
+    <script src="//cdn.datatables.net/1.10.2/js/jquery.dataTables.min.js"></script>
+	<link rel="stylesheet" href="//cdn.datatables.net/1.10.2/css/jquery.dataTables.css" />
+	<link rel="stylesheet" href="{% static "css/bootstrap-chosen.css" %}" type="text/css">
+	<!--<script src="//cdn.datatables.net/plug-ins/a5734b29083/integration/bootstrap/3/dataTables.bootstrap.js"></script>
+	<link rel="stylesheet" href="//cdn.datatables.net/plug-ins/a5734b29083/integration/bootstrap/3/dataTables.bootstrap.css" />-->
+	<link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/jquery.bootstrapvalidator/0.5.2/css/bootstrapValidator.min.css"/>
+	<script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/jquery.bootstrapvalidator/0.5.2/js/bootstrapValidator.min.js"></script>
+	<script type="text/javascript" src="http://bootstrapvalidator.com/vendor/bootstrapvalidator/js/language/es_ES.js"></script>
+    <script>
+    
+    function checkArtAlmacenado(value, validator, $field){
+		var selec=$field.parents(".item").find(".tipo_articulo_select").val()
+		if (selec =='AA'){
+			if (value){
+				return true
+			}
+			else {return false}
+		}
+		else {return true}
+	}
+    
+$(document).ready(function () {  
+  //Variables globales
+  var subtotal_factura=0;
+  var total_art_compuesto=0;
+  var iva=0;
+  var total=0;
+  var es_b = false;
+  var item_factura=-1;
+  var item_con_compuesto = [];
+  //objeto JQuery
+  var item_que_llama_tabla;
+  var item_que_llama_componer;
+  
+  
+  //FUNCIONES AUXILIARES
+  
+function redondear(numero, decimales) {
+	var flotante = parseFloat(numero);
+	var resultado = Math.round(flotante*Math.pow(10,decimales))/Math.pow(10,decimales);
+	return resultado.toFixed(decimales);
+	}
+    
+    $(".tipo_articulo_select").change(function(){
+    	return tipificarArticulo($(this).parents(".item"));
+    });
+    
+    //Le paso el select del tipo de articulo
+    function tipificarArticulo(row) {
+    	console.log("tipificarArticulo");
+    	//var regex = /det_venta-(\d+)-/g;
+    	//var num = regex.exec($(el).attr("id"));
+    	//var num1 = $(el).attr("id").substring(8,9);
+    	//alert (num[1]);
+    	//Art. almacenado
+    	if ($("option:selected", $(row).find(".tipo_articulo_select")).val()=='AA') {
+    		$(row).find(".denominacion_articulo").show();
+    		$(row).find(".linea_articulo_personalizado_select").hide();
+    		$(row).find(".articulo_personalizado_input").hide();
+    		$(row).find(".composicion_articulo").hide();
+    		$(row).find(".precio_unitario_input").attr("readonly",false);
+    	}
+    	//Art. Personalizado
+    	else if ($("option:selected", $(row).find(".tipo_articulo_select")).val()=='AP'){
+    		$(row).find(".denominacion_articulo").hide();
+    		$(row).find(".linea_articulo_personalizado_select").show();
+    		$(row).find(".articulo_personalizado_input").show();
+    		$(row).find(".articulo_personalizado_input").val("");
+    		$(row).find(".composicion_articulo").hide();
+    		$(row).find(".precio_unitario_input").attr("readonly",false);
+    	}
+    	//Art. compuesto
+    	else if ($("option:selected", $(row).find(".tipo_articulo_select")).val()=='AC'){
+    		$(row).find(".denominacion_articulo").hide();
+    		$(row).find(".linea_articulo_personalizado_select").hide();
+    		$(row).find(".articulo_personalizado_input").hide();
+    		$(row).find(".composicion_articulo").show();   
+    		$(row).find(".precio_unitario_input").attr("readonly",true);
+    	}
+    }
+    
+    function personalizarArtComp(row){
+    	console.log("personalizarArtComp")
+    	if($(row).find(".pers_checkbox").is(":checked")){
+    		$(row).find(".articulo_personalizado_input").show();
+    		$(row).find(".linea_articulo_personalizado_select").show();
+    		$(row).find(".denominacion_articulo").hide();
+    	}
+    	else {
+    		$(row).find(".articulo_personalizado_input").hide();
+    		$(row).find(".linea_articulo_personalizado_select").hide();
+    		$(row).find(".denominacion_articulo").show();
+    	}
+    	
+    }
+    
+    function calcularDescuento(row) {
+    	console.log("calcularDescuento");
+    	//var regex = /det_venta-(\d+)-/g;
+    	//var num = regex.exec($(el).attr("id"));
+    	var tot = parseFloat($(row).find(".cantidad_input").val())*parseFloat($(row).find(".precio_unitario_input").val());
+    	var porc_desc = parseFloat($(row).find(".descuento_input").val())/100;
+    	return tot*porc_desc;
+    }
+    
+    
+    function actualizarTotalesFactura() {
+    	console.log("actualizarTotalesFactura");
+    	subtotal_factura = 0;
+    	$("#detalle_factura .item").each(function (){
+    		console.log(($(this).find(".total").text().replace("$ ","")));
+    		subtotal_factura = subtotal_factura + parseFloat($(this).find(".total").text().replace("$ ",""));
+		});
+    	$("#importe_subtotal").text(redondear(subtotal_factura,2));
+    	var desc = parseFloat($("#id_descuento").val());
+    	if (es_b){
+    		var nuevo_subtotal = subtotal_factura-(subtotal_factura*desc/100);
+    		$("#importe_neto").text(redondear(nuevo_subtotal,2));
+    		iva = 0
+    		$("#importe_iva").text(redondear(iva,2));
+    		$("#importe_total").text(redondear(nuevo_subtotal,2));
+    	}
+    	else {
+    		var nuevo_subtotal = subtotal_factura-(subtotal_factura*desc/100);
+    	    $("#importe_neto").text(redondear(nuevo_subtotal,2));
+    		iva = nuevo_subtotal*0.21;
+    		total = nuevo_subtotal + iva
+    		$("#importe_iva").text(redondear(iva,2));
+    		$("#importe_total").text(redondear(total,2));
+    	}
+    }
+    
+    function actualizarTotalesArtComp(){
+    	console.log("actualizarTotalesArtComp");
+    	var total_art_comp=0;
+    	$(".item_composicion_articulo:visible").each(function(){
+    		total_art_comp = total_art_comp + parseFloat($(this).find(".total").text().replace("$ ",""));
+    	});
+    	$("#total_articulo_compuesto").text("Total: $"+redondear(total_art_comp,2));
+    }
+    
+    //Paso como param la fila que se agrego o actualizo
+    function actualizarPTItemFactura(row) {
+    	console.log("actualizarPTItemFactura");
+    	//var regex = /det_venta-(\d+)-/g;
+    	//var num = regex.exec($(el).attr("id"));
+    	if ($(row).find(".cantidad_input").val() && $(row).find(".precio_unitario_input").val()){
+    		if ($(row).find(".cantidad_input").val().split(":").length-1==1){//Es tiempo, hay un ":"
+    			var cantidad = parseInt($(row).find(".cantidad_input").val().split(":")[0])+parseInt($(row).find(".cantidad_input").val().split(":")[1])/60
+    		} else {var cantidad=parseFloat($(row).find(".cantidad_input").val())}
+    		$(row).find(".total").text("$ "+redondear(parseFloat($(row).find(".precio_unitario_input").val())*cantidad,2));
+    			var tot = parseFloat($(row).find(".total").text().replace("$ ",""));
+    			if ($(row).find(".descuento_input").val()>0.00){
+    				var des=calcularDescuento(row);
+    				tot = tot - des;
+    				$(row).find(".total").text("$ "+redondear(tot,2));
+    			}
+    			actualizarTotalesFactura();
+  		} else { $(row).find(".total").text("$ 0.00"); }
+    }
+    
+    //Paso la fila que se actualizo o agregó
+    function actualizarPTArticuloCompuesto(row){
+    	console.log("actualizarPTArticuloCompuesto");
+    	if ($(row).find(".cantidad_input").val() && $(row).find(".precio_unitario_input").val()){
+			if ($(row).find(".cantidad_input").val().split(":").length-1==1){//Es tiempo, hay un ":"
+				var cantidad = parseInt($(row).find(".cantidad_input").val().split(":")[0])+parseInt($(row).find(".cantidad_input").val().split(":")[1])/60
+			} else {var cantidad=parseFloat($(row).find(".cantidad_input").val())}
+			var tot = cantidad*parseFloat($(row).find(".precio_unitario_input").val());
+    		$(row).find(".total").text("$ "+redondear(tot,2));
+    		actualizarTotalesArtComp();
+    	} else { $(row).find(".total").text("$ 0.00"); }
+    }
+    
+    function actualizarPUyPT(el) {
+    	console.log("actualizarPUyPT");
+    	var regex = /det_venta-(\d+)-/g;
+    	var num = regex.exec($(el).attr("id"));
+    	if (es_b) {
+    	$.get("/api/get_precio_unitario_iva_inc/"+$(el).val()+"/", function(data) {
+    		$("input#id_det_venta-"+num[1]+"-precio_unitario").val(data);
+    		if ($("#id_det_venta-"+num[1]+"-cantidad").val()) {
+    			if ($("#id_det_venta-"+num[1]+"-articulo").val()){
+    				actualizarPTItemFactura(el);
+    				actualizarTotalesFactura();
+    				}
+    			}
+    	
+    		});}
+    	else {
+    	$.get("/api/get_precio_unitario/"+$(el).val()+"/", function(data) {
+    		$("input#id_det_venta-"+num[1]+"-precio_unitario").val(data);
+    		if ($("#id_det_venta-"+num[1]+"-cantidad").val()) {
+    			if ($("#id_det_venta-"+num[1]+"-articulo").val()){
+    				actualizarPTItemFactura(el);
+    				actualizarTotalesFactura();
+    				}
+    			}
+    	
+    		});}
+    }
+    
+    function buscarPtoVtaYNumComp(el){
+    	var compro = $("option:selected", el).text();
+    	if (compro.match("B$")){es_b=true;}
+    	else {es_b=false;}
+    	if (compro.match("^NC")&&!$("#id_cliente option:selected").text().match("^----")){
+    		$("#id_comprobante_relacionado").attr('disabled', false);
+    		}
+    	else{$("#id_comprobante_relacionado").attr('disabled', true);}
+    	$.get("/api/get_punto_venta/"+compro+"/", function(data) {
+    		$("label#punto_venta").text(("000" + data).slice (-4));
+    		});
+    	$.get("/api/get_proximo_nro_comprobante/"+$("#id_tipo option:selected").text()+"/", function(data) {
+    		$("label#numero_comprobante").text(("000000000" + data).slice (-8));
+    		});
+    	tblSelArt.clear().draw();
+    }
+    
+    // Code adapted from http://djangosnippets.org/snippets/1389/  
+    function updateElementIndex(el, prefix, ndx) {
+        var id_regex = new RegExp('(' + prefix + '-\\d+-)');
+        var replacement = prefix + '-' + ndx + '-';
+        if ($(el).attr("for")) $(el).attr("for", $(el).attr("for").replace(id_regex,
+        replacement));
+        if (el.id) el.id = el.id.replace(id_regex, replacement);
+        if (el.name) el.name = el.name.replace(id_regex, replacement);
+    }
+
+    function deleteItemFactura(btn, prefix) {
+        var formCount = parseInt($('#id_' + prefix + '-TOTAL_FORMS').val());
+        if (formCount > 1) {
+            // Delete the item/form
+            var el_total = $(btn).parents('.item').find('.total');
+            var total_articulo = parseFloat(el_total.text().replace("$ ",""));
+            subtotal_factura = subtotal_factura - total_articulo;
+            actualizarTotalesFactura();
+            $(btn).parents('.item').remove();
+            var forms = $('.item'); // Get all the forms  
+            // Update the total number of forms (1 less than before)
+            $('#id_' + prefix + '-TOTAL_FORMS').val(forms.length);
+            var i = 0;
+            // Go through the forms and set their indices, names and IDs
+            for (formCount = forms.length; i < formCount; i++) {
+                $(forms.get(i)).children().children().each(function () {
+                    updateElementIndex(this, prefix, i);
+                });
+            }
+        } // End if
+        else {
+            alert("La factura debe contener al menos un item");
+        }
+        return false;
+    }
+    
+    function deleteItemArtCompuesto(btn, prefix) {
+        var formCount = parseInt($('#id_' + prefix + '-TOTAL_FORMS').val());
+        if ($(".item_composicion_articulo:visible").length > 1) {
+            // Delete the item/form
+            var el_total = $("#total_articulo_compuesto");
+            var total_articulo = parseFloat(el_total.text().replace("Total: $",""));
+            var prec_item = parseFloat($(btn).parents(".item_composicion_articulo").find(".total").text().replace("$ ",""));
+            total_articulo = total_articulo - prec_item;
+            $(el_total).text("$ "+redondear(total_articulo,2));
+            $(btn).parents('.item_composicion_articulo').remove();
+            var forms = $('.item_composicion_articulo'); // Get all the forms  
+            // Update the total number of forms (1 less than before)
+            $('#id_' + prefix + '-TOTAL_FORMS').val(forms.length);
+            var i = 0;
+            // Go through the forms and set their indices, names and IDs
+            for (formCount = forms.length; i < formCount; i++) {
+                $(forms.get(i)).children().children().each(function () {
+                    updateElementIndex(this, prefix, i);
+                });
+            }
+        } // End if
+        else {
+            alert("El articulo compuesto debe tener al menos un item");
+        }
+        return false;
+    }
+
+    function addItemFactura(btn, prefix) {
+        var formCount = parseInt($('#id_' + prefix + '-TOTAL_FORMS').val());
+        // You can only submit a maximum of 10 todo items 
+        if (formCount < 20) {
+            // Clone a form (without event handlers) from the first form
+            var row = $(".item:first").clone(false).get(0);
+            // Insert it after the last form
+            $(row).removeAttr('id').hide().insertAfter(".item:last").slideDown(300);
+
+            // Remove the bits we don't want in the new row/form
+            // e.g. error messages
+            $(".errorlist", row).remove();
+            $(row).children().removeClass("error");
+            
+            // Relabel or rename all the relevant bits
+            $(row).children().children().each(function () {
+                updateElementIndex(this, prefix, formCount);
+                $(this).val("");
+                $(this).removeAttr('value');
+            });
+                        
+            //Acomodo los campos
+            $(row).find(".articulo_personalizado_input").hide();
+            $(row).find(".composicion_articulo").hide();
+            $(row).find(".composicion_articulo").text("Haga click para componer un articulo");
+            $(row).find(".linea_articulo_personalizado_select").hide();
+            $(row).find(".tipo_articulo_select").val('AA');
+            $(row).find(".total").text("$ 0.00");
+            $(row).find(".descuento_input").val("0.00");
+            $(row).find(".denominacion_articulo").text("Haga click aqui para buscar un articulo");
+            $(row).find(".denominacion_articulo").show();
+            $(row).find(".precio_unitario_input").attr("readonly",false);
+                        
+
+            // Agrego el handler para borrar, y actualizar los precios 
+            $(row).find(".delete").click(function () {
+                return deleteItemFactura(this, prefix);
+            });         
+            $(row).find(".articulo_select").change(function() {
+    	    	return actualizarPUyPT(this);	
+            });
+            $(row).find(".cantidad_input").change(function() {
+                return actualizarPTItemFactura($(this).parents(".item"));	
+            });
+            $(row).find(".precio_unitario_input").change(function() {
+                return actualizarPTItemFactura($(this).parents(".item"));
+            });
+
+            //Asocio el handler del ocultador de chirimbolos
+            $(row).find(".tipo_articulo_select").change(function(){
+              return tipificarArticulo($(this).parents(".item"));
+            });	
+            
+            //Evento de cambio de descuento de articulo
+    		$(row).find(".descuento_input").change(function() {
+    	    	return actualizarPTItemFactura($(this).parents(".item"));	
+    		});
+    		
+    		$(row).find(".denominacion_articulo").on("click", function() {
+    	    	return lanzarDialogSelArt(row);	
+    		});
+    		
+    		$(row).find(".composicion_articulo" ).on( "click", function() {
+    			lanzarDialogCompArt(row);
+    	    });
+    		//Habilito validadores
+    		$("form#comprobante").bootstrapValidator('addField', $(row).find(".cantidad_input"));
+    		$("form#comprobante").bootstrapValidator('addField', $(row).find(".precio_unitario_input"));
+    		$("form#comprobante").bootstrapValidator('addField', $(row).find(".descuento_input"));
+    		$("form#comprobante").bootstrapValidator('addField', $(row).find(".linea_articulo_personalizado_select"));
+    		$("form#comprobante").bootstrapValidator('addField', $(row).find(".articulo_personalizado_input"));
+    		$("form#comprobante").bootstrapValidator('addField', $(row).find(".articulo_input"));
+            
+            // Update the total form count
+            $("#id_" + prefix + "-TOTAL_FORMS").val(formCount + 1);
+        } // End if
+        else {
+            alert("Solo se puede agregar 20 item por factura");
+        }
+        return false;
+    }
+    
+    function addItemArtCompuesto(btn, prefix){
+    	var formCount = parseInt($('#id_' + prefix + '-TOTAL_FORMS').val()); 
+        var row = $(".item_composicion_articulo:first").clone(false).get(0);
+        $(row).removeAttr('id').hide().insertAfter(".item_composicion_articulo:last").slideDown(300);
+        $(".errorlist", row).remove();
+        $(row).children().removeClass("error");
+            
+        $(row).children().children().each(function () {
+        	updateElementIndex(this, prefix, formCount);
+            $(this).val("");
+            $(this).removeAttr('value');
+        });
+        
+        $(row).children().each(function () {
+        	updateElementIndex(this, prefix, formCount);
+            $(this).val("");
+            $(this).removeAttr('value');
+        });
+                        
+        //Acomodo los campos
+        $(row).find(".pers_checkbox").prop("checked",false);
+        $(row).find(".linea_articulo_personalizado_select").hide();
+        $(row).find(".articulo_personalizado_input").hide();
+        $(row).find(".total").text("$ 0.00");
+        $(row).find(".denominacion_articulo").text("Haga click para buscar un articulo");
+                      
+
+        // Agrego el handler para borrar, y actualizar los precios 
+        $(row).find(".delete").click(function () {
+        	return deleteItemArtCompuesto(this, prefix);
+        });
+            
+        //Evento de cambio de cantidad en art compuesto
+        $(row).find(".cantidad_input").on("change",function(){
+        	actualizarPTArticuloCompuesto($(this).parents(".item_composicion_articulo"));
+        });
+          	
+        //Evento de cambio de precio unitario en art compuesto
+        $(row).find(".precio_unitario_input").on("change",function(){
+        	actualizarPTArticuloCompuesto($(this).parents(".item_composicion_articulo"));
+        });
+        
+        $(row).find(".denominacion_articulo").on("click", function() {
+        	return lanzarDialogSelArt(row);	
+    	});
+        
+        $(row).find(".pers_checkbox").on("change",function(){
+        	personalizarArtComp($(this).parents(".item_composicion_articulo"));
+        });
+            
+        // Update the total form count
+        $("#id_" + prefix + "-TOTAL_FORMS").val(formCount + 1);
+        return false;
+    }
+    
+    function seleccionarArticulo(){
+    	console.log("seleccionarArticulo");
+  		var art = tblSelArt.row('.selected').data();
+  		$(item_que_llama_tabla).find(".denominacion_articulo").text(art[1]+" - "+art[2]+" - "+art[3])
+  		//$("label#id_det_venta-"+item_factura+"-denominacion_articulo").text(art[1]+" - "+art[2]+" - "+art[3])
+  		$(item_que_llama_tabla).find(".articulo_input").val(art[0])
+  		//$("input#id_det_venta-"+item_factura+"-articulo").val(art[0])
+  		$(item_que_llama_tabla).find(".precio_unitario_input").val(art[5])
+  		//$("input#id_det_venta-"+item_factura+"-precio_unitario").val(art[5])
+  		$(item_que_llama_tabla).find(".total").text("$ "+redondear(parseFloat($(item_que_llama_tabla).find(".precio_unitario_input").val())*parseFloat($(item_que_llama_tabla).find(".cantidad_input").val()),2));
+  		console.log($(item_que_llama_tabla));
+  		if($(item_que_llama_tabla).parents("#detalle_composicion_articulo").length>0){
+  			console.log("Viene de art compuesto")
+  			actualizarPTArticuloCompuesto($(item_que_llama_tabla));
+  			actualizarTotalesArtComp($(item_que_llama_tabla));
+  		}
+  		else {
+  			console.log("Viene de factura")
+  			actualizarPTItemFactura($(item_que_llama_tabla));
+  			actualizarTotalesFactura();
+  		}
+  		dialogSelArt.dialog("close");
+  		tblSelArt.search("");
+  		tblSelArt.clear().draw();
+  	}
+  	
+  	function componerArticulo(){
+  		console.log("componerArticulo");
+  		var row = $(".item")[item_factura];
+  		$(row).find(".composicion_articulo").text($("#descripcion_articulo_compuesto").val());
+  		$(row).find(".articulo_personalizado_input").val($("#descripcion_articulo_compuesto").val());
+  		$("#descripcion_articulo_compuesto").val("");
+  		$(row).find(".precio_unitario_input").val($("#total_articulo_compuesto").text().replace("Total: $",""));
+  		actualizarPTItemFactura($(row));
+  		item_con_compuesto[item_con_compuesto.length]=item_factura
+  		$(".item_composicion_articulo:visible").each(function(){
+  			$(this).find(".id_detalle_venta_hidden").val(item_factura);
+  			console.log($(this).find(".articulo_personalizado_input").val());
+  		});
+  		
+  		dialogCompArt.dialog("close");
+  	}
+  	
+  	function lanzarDialogSelArt(row){
+  		console.log("lanzarDialogSelArt");
+  		//var regex = /det_venta-(\d+)-/g;
+      	//var num = regex.exec($(row).find(".articulo_input").attr("id"));
+      	//item_factura = num[1];
+  		item_que_llama_tabla = row
+      	dialogSelArt.dialog( "open" );
+  	}
+  	
+  	function lanzarDialogCompArt(row){
+  		console.log("lanzarDialogCompArt");
+  		var regex = /det_venta-(\d+)-/g;
+      	var num = regex.exec($(row).find(".articulo_input").attr("id"));
+      	item_factura = num[1];
+      	console.log("linea que es art compuesto:")
+      	console.log(item_factura)
+      	console.log(item_con_compuesto)
+      	console.log(jQuery.inArray(item_factura,item_con_compuesto))
+      	//Ese item no tiene articulo compuesto
+      	if (jQuery.inArray(item_factura,item_con_compuesto)==-1){
+      		//Si no hay ninguno que tenga articulo compuesto...
+      		console.log("Este item no tiene art compuesto..........");
+      		if ($(".item_composicion_articulo").length==1 && $(".item_composicion_articulo:first > .id_detalle_venta_hidden").val()==""){
+      			console.log("No hay ninguno que tenga art compuesto")
+      			$("#id_art_comp-0-id_detalle_venta").show();
+      			$("#id_art_comp-0-pers").show();
+      			$("#id_art_comp-0-cantidad").show();
+      			$("#id_art_comp-0-denominacion_articulo").show();
+      			$("#id_art_comp-0-articulo_personalizado").hide();
+      			$("#id_art_comp-0-linea_articulo_personalizado").hide();
+      			$("#id_art_comp-0-precio_unitario").show();
+      		}
+      		else {
+      			console.log("Hay al menos un art compuesto");
+      			$(".item_composicion_articulo").each(function(){
+      				$(this).hide();
+      			});
+      			$("#descripcion_articulo_compuesto").val("");
+      			$("#total_articulo_compuesto").text("Total: $ 0.00");
+      			addItemArtCompuesto(this,"art_comp");
+      		}
+      	}
+      	//Este item ya es articulo compuesto
+      	else {
+      		$(".item_composicion_articulo").each(function(){
+      			$(this).hide();
+      		})
+      		$(".item_composicion_articulo > .id_detalle_venta_hidden[value="+item_factura+"]").each(function(){
+      			$(this).parents(".item_composicion_articulo").show();
+      			$("#descripcion_articulo_compuesto").val($("#id_det_venta-"+num[1]+"-composicion_articulo").text());
+      		})
+      	}
+      	dialogCompArt.dialog("open");
+  	}
+    
+    //ASOCIACIONES DE EVENTOS
+    //Evento de cambio de cantidad en art compuesto
+  	$("#detalle_composicion_articulo .cantidad_input").on("change",function(){
+  		console.log("Evento: actualizo cantidad en art compuesto");
+  		actualizarPTArticuloCompuesto($(this).parents(".item_composicion_articulo"));
+  	});
+  	
+  	//Evento de cambio de precio unitario en art compuesto
+  	$("#detalle_composicion_articulo .precio_unitario_input").on("change",function(){
+  		console.log("Evento: actualizo PU en art compuesto");
+  		actualizarPTArticuloCompuesto($(this).parents(".item_composicion_articulo"));
+  	});
+  	
+  	//Evento de click en articulo dentro de un articulo compuesto
+  	$("#detalle_composicion_articulo .denominacion_articulo").on("click", function(){
+  		console.log("Evento: actualizo articulo en art compuesto");
+  		//alert ($(this).attr("id"))
+  		lanzarDialogSelArt($(this).parents(".item_composicion_articulo"));
+  		//var regex = /det_venta-(\d+)-/g;
+      	//var num = regex.exec($(row).find(".articulo_input").attr("id"));
+      	
+  	});
+  	
+  	//Evento de agregacion de item de articulo compuesto
+  	$("#add_item_articulo_compuesto").on("click",function(){
+  		console.log("Evento: Agrego nuevo articulo compuesto");
+  		return addItemArtCompuesto(this,"art_comp");
+  	});
+  	
+    //Evento de cambio de descuento
+    $("#id_descuento").change(function() {
+    	console.log("Evento: Cambio Descuento en factura");
+    	    var desc = parseFloat($(this).val());
+    		console.log(subtotal_factura)
+    	    var nuevo_subtotal = subtotal_factura-(subtotal_factura*desc/100);
+    		$("#importe_neto").text(redondear(nuevo_subtotal,2));
+    		iva = nuevo_subtotal*0.21;
+    		total = nuevo_subtotal + iva
+    		$("#importe_iva").text(redondear(iva,2));
+    		$("#importe_total").text(redondear(total,2)); 
+    });
+    
+    //Evento de cambio de cantidad de articulo
+    $("#detalle_factura .cantidad_input").change(function() {
+    	console.log("Evento: actualizo cantidad en item factura");
+    	    return actualizarPTItemFactura($(this).parents(".item"));	
+    });
+    
+    //Evento de cambio de precio unitario
+    $("#detalle_factura .precio_unitario_input").change(function() {
+    	console.log("Evento: actualizo PU en item factura");
+    	    return actualizarPTItemFactura($(this).parents(".item"));	
+    });
+    
+    // Evento de cambio de seleccion de tipo de comprobante
+    $("#id_tipo").change(function() {
+    	return buscarPtoVtaYNumComp(this);
+    });
+    
+    //Evento de cambio de descuento de articulo
+    $("#detalle_factura .descuento_input").change(function() {
+    	console.log("Evento: actualizo descuento en item factura");
+    	    return actualizarPTItemFactura($(this).parents(".item"));	
+    });
+    
+    // Register the click event handlers
+    $("#add_item_factura").click(function () {
+    	console.log("Evento: Agrego nuevo item factura");
+        return addItemFactura(this, "det_venta");
+    });
+
+    $("#detalle_factura .delete").click(function () {
+    	console.log("Evento: borro item factura");
+        return deleteItemFactura(this, "det_venta");
+    });
+    
+    $("#detalle_composicion_articulo .delete").click(function () {
+    	console.log("Evento: borro item factura");
+        return deleteItemFactura(this, "art_comp");
+    });
+    
+    $( "#detalle_factura .denominacion_articulo" ).on( "click", function() {
+    	console.log("Evento: cambio de articulo en item factura");
+      lanzarDialogSelArt($(this).parents(".item"));
+    }); 	
+    
+    $( "#detalle_factura .composicion_articulo" ).on( "click", function() {
+    	console.log("Evento: se empieza un arti compuesto");
+      lanzarDialogCompArt($(this).parents(".item"));
+    });
+    
+    $("#detalle_composicion_articulo .pers_checkbox").on("change",function(){
+    	personalizarArtComp($(this).parents(".item_composicion_articulo"));
+    });
+    
+    $("form#comprobante").on("submit",function(e){
+    	$("form input[type='submit']").attr("disabled","disabled");
+    	//$('#modalSubmit').modal()
+    	//e.preventDefault();
+    });
+    
+    $("#id_cliente").on('change', function(){
+    	if ($("#id_tipo option:selected").text().match("^NC")&&!$("option:selected", this).text().match("^----")){
+    		$("#id_comprobante_relacionado").attr('disabled', false);
+    		var cli = $(this).val()
+    		$.get("/api/obtener_comprobantes_cliente/"+cli, function(data){
+    			console.log(json_data);
+    			var json_data = JSON.parse(data);
+    			$("#id_comprobante_relacionado").empty();
+    			if (json_data.length > 0) {
+    				for(i=0;i<json_data.length;i++){
+    					$("#id_comprobante_relacionado").append("<option value="+json_data[i].id+">"+json_data[i].comprobante+"</option>");
+    				}
+    			}
+    		});
+    		}
+    	else{$("#id_comprobante_relacionado").attr('disabled', true);}
+    });
+    
+    //EJECUTABLES
+    
+    $("#id_cliente").chosen({width: "450px",no_results_text: "No se encontraron clientes con ese nombre"});
+    $("#id_comprobantes_relacionados").chosen({width: "500px",no_results_text: "No se encontraron comprobantes"});
+    
+    //Vuelvo a poner todo como estaba ante una recarga con errores. Si esta tildado como personalizado, sino como comun
+  	$(".tipo_articulo_select").each(function(){
+    	tipificarArticulo($(this).parents(".item"));
+    	actualizarPTItemFactura($(this).parents(".item"));
+    	
+  	});
+  	
+  	if ($("#id_tipo option:selected").text().match("A$") || $("#id_tipo option:selected").text().match("B$")){
+  		return buscarPtoVtaYNumComp($("#id_tipo"));
+  	}
+  	
+  	$('form').keypress(function(e){   
+    	if(e == 13){
+      		return false;
+    	}
+  	});
+
+  	$('input').keypress(function(e){
+    	if(e.which == 13){
+      		return false;
+    	}
+  	});
+  	
+  	
+  	
+  	
+  	dialogSelArt = $( "#dialog_seleccion_articulo" ).dialog({
+      autoOpen: false,
+      height: 600,
+      width: 900,
+      modal: true,
+      buttons: {
+        "Aceptar": seleccionarArticulo,
+        Cancelar: function() {
+          dialogSelArt.dialog( "close" );
+        }
+      },
+      close: function() {
+        form[ 0 ].reset();
+        //allFields.removeClass( "ui-state-error" );
+      }
+    });
+    
+    dialogCompArt = $( "#dialog_composicion_articulo" ).dialog({
+      autoOpen: false,
+      appendTo: "#comprobante",
+      height: 400,
+      width: 700,
+      modal: true,
+      buttons: {
+        "Aceptar": componerArticulo,
+        Cancelar: function() {
+          dialogCompArt.dialog( "close" );
+        }
+      },
+      close: function() {
+        form[ 0 ].reset();
+      }
+    });
+    
+    //dialogCompArt.closest('div.ui-dialog').appendTo('#nuevo_comprobante');
+ 
+    form = dialogSelArt.find( "form" ).on( "submit", function( event ) {
+      event.preventDefault();
+      seleccionarArticulo();
+    });
+    
+    $('#articulos').dataTable({
+        "language": {
+                "url": "//cdn.datatables.net/plug-ins/725b2a2115b/i18n/Spanish.json"
+            },
+        "processing": true,
+        "serverSide": true,
+        "ajax": {
+            "url": "{% url "art_datatables" %}",
+            "data": function ( d ) {
+                d.desde = "seleccionArticulo";
+                if (es_b) {d.es_b=true};
+            }},
+        "columnDefs":[{
+        	"targets" :0,
+      		"visible" : false }
+      		]
+    });
+    
+    var tblSelArt = $('#articulos').DataTable();
+    
+    $('#articulos tbody').on( 'click', 'tr', function () {
+        if ( $(this).hasClass('selected') ) {
+            $(this).removeClass('selected');
+        }
+        else {
+            tblSelArt.$('tr.selected').removeClass('selected');
+            $(this).addClass('selected');
+        }
+    } );
+    
+    $("#id_comprobante_relacionado").attr('disabled',true);
+    
+    $("#cont input[type='text'], select").each(function() {
+    	$(this).addClass("form-control");
+    	});
+    
+    //VALIDADOR!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    $("form#comprobante").bootstrapValidator({
+    	container:'popover',
+    	feedbackIcons: {
+            valid: 'glyphicon glyphicon-ok',
+            invalid: 'glyphicon glyphicon-remove',
+            validating: 'glyphicon glyphicon-refresh'
+        },
+        live:'submitted'
+    })
+});
+</script> <style type="text/css">
+#cont {
+  	padding: 52px 0 30px 0;  
+}
+
+#importe_subtotal::before,#importe_neto::before,#importe_iva::before,#importe_total::before{
+	content:"$ ";
+}
+
+.linea_articulo_personalizado_select {
+	display:block;
+	width:100%;
+	}
+	
+.articulo_personalizado_input {
+	display:block;
+	width:100%;
+	}
+
+
+
+table#articulos tbody {
+font-size:10px;
+}
+
+#dialog_seleccion_articulo {
+	font-size:0.8em;
+}
+
+#dialog_composicion_articulo {
+	font-size:0.6em;
+}
+
+
+</style>
+
+{% endblock %}
+
+{% block container %}
+<!-- Dialogo de submit -->
+<div class="modal fade" id="modalSubmit" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+<div class="modal-dialog">
+  <div class="modal-content">
+    <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+      <h4 class="modal-title" id="myModalLabel">Autorizacion de comprobante</h4>
+    </div>
+    <div class="modal-body">
+      <div class="progress">
+      <div class="progress-bar" role="progressbar" aria-valuenow="60" aria-valuemin="0" aria-valuemax="100" style="width: 60%;">
+        <span class="sr-only">60% Complete</span>
+      </div>
+    </div>
+    LOGUEANDO EN AFIP
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+      <button type="button" class="btn btn-primary">Save changes</button>
+    </div>
+  </div>
+</div>
+</div>
+
+
+<!-- Dialogo de composicion de articulo -->
+<div id="dialog_composicion_articulo" title="Articulo compuesto">
+<label for="descripcion_articulo_compuesto">Descripción:</label>
+<textarea id="descripcion_articulo_compuesto" rows="5" cols="50"></textarea>
+{{articuloCompuestoFormset.management_form}}
+		<table id="detalle_composicion_articulo">
+      <tbody>
+        <tr id="encabezado_detalle_composicion_articulo">
+          <th>Pers</th>
+          <th>Cantidad</th>
+          <th>Articulo</th>
+          <th>Precio Unitario</th>
+          <th>Total Articulo</th>
+          <th>Borrar Art</th>
+        </tr>
+        {% for ac in articuloCompuestoFormset.forms %}
+        <tr class="item_composicion_articulo">{{ac.id_detalle_venta}}
+          <td class="columna_personalizado">{{ac.pers}}</td>
+          <td class="columna_cantidad">{{ac.cantidad}}</td>
+          <td class="columna_articulo">
+          		{{ac.articulo}}
+          		{{ac.linea_articulo_personalizado}}
+          		{{ac.articulo_personalizado}}
+          	<label id="id_art_comp-0-denominacion_articulo" class="denominacion_articulo">Haga click aqui para buscar un articulo</label></td>
+          <td class="columna_precio">{{ac.precio_unitario}}</td>
+          <td class="columna_total"><label class="total">$ 0.00</label></td>
+          <td><a class="delete" href="#">Borrar</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p><a id="add_item_articulo_compuesto" href="#">Agregar artículo</a></p>
+<label id="total_articulo_compuesto">Total: $0.00</label>
+</div>    
+
+    <div id="dialog_seleccion_articulo" title="Seleccione articulo">
+    <form>		
+    <table id="articulos" class="display" cellspacing="0" width="100%">
+				<thead><tr>
+					<th>PK</th>
+					<th>Código</th>
+					<th>Código Fábrica</th>
+					<th>Denominación</th>
+					<th>Rubro</th>
+					<th>Precio</th>
+				</tr></thead>
+	
+	<tfoot><tr>
+		<th>PK</th>
+		<th>Código</th>
+		<th>Código Fábrica</th>
+		<th>Denominación</th>
+		<th>Rubro</th>
+		<th>Precio</th>
+	</tr></tfoot>
+</table>
+</form>
+	</div>
+    <div id="cont" class="container">
+    <div class="page_header">
+	<h1>Comprobantes <small>Agregar nuevo comprobante</small></h1>
+	</div>      
+      <form id="comprobante" class="form-horizontal" method="POST">{% csrf_token %}
+        <div class="panel panel-primary">
+        	<div class="panel-heading"><h3 class="panel-title">Cabecera</h3></div>
+        	<div class="panel-body">
+        		<div class="form-group">
+        			<label class="col-md-2 control-label" for="id_fecha">Fecha</label>
+        			<div class="col-md-2"> {{ facturaForm.fecha }} </div>
+        		</div>
+        		<div class="form-group">
+            		<label class="col-md-2 control-label" for="id_tipo">Tipo</label>
+            		<div class="col-md-2"> {{ facturaForm.tipo }} </div>
+            		<div class="col-md-2"><label>Nro  </label> <label id="punto_venta">____</label>
+            			<label>/</label> <label id="numero_comprobante">________</label> </div>
+            	</div>
+            	<div class="form-group">
+            		<label class="col-md-2 control-label" for="id_cliente">Cliente:</label>
+            		<div class="col-md-2"> {{ facturaForm.cliente }} </div>
+            		<label class="col-md-2 col-md-offset-3 control-label" for="id_cond_venta">Condición de Venta:</label> 
+                    <div class="col-md-2"> {{ facturaForm.condicion_venta }} </div>
+            	</div>
+            </div>
+        </div>
+        <div class="panel panel-primary">
+    		<div class="panel-heading"><h3 class="panel-title">Detalle</h3></div>
+    		<div class="panel-body">
+    			{{ detalleFormset.management_form }}
+    			<table id="detalle_factura" class="table table-condensed">
+    				<thead>
+    					<tr id="encabezado_detalle_factura">
+    						<th>Tipo</th>
+    						<th>Cantidad</th>
+    						<th>Articulo</th>
+    						<th>Precio Unitario</th>
+    						<th>Descuento</th>
+    						<th>Total Articulo</th>
+    						<th>Borrar Art</th>
+    					</tr>
+    				</thead>
+    				<tbody>
+    					{% for formu in detalleFormset.forms %}
+    					<tr class="item">
+    						<td class="columna_personalizado">{{formu.tipo_articulo}}</td>
+    						<td class="columna_cantidad">{{formu.cantidad.errors}}{{formu.cantidad}}</td>
+    						<td class="columna_articulo">{{formu.articulo.errors}}{{formu.articulo}}
+    						<label id="id_det_venta-0-denominacion_articulo" class="denominacion_articulo">Haga click aqui para buscar un articulo</label>
+    						{{formu.linea_articulo_personalizado.errors}}{{formu.linea_articulo_personalizado}}
+    						{{formu.articulo_personalizado}}
+    						<label id="id_det_venta-0-composicion_articulo" class="composicion_articulo">Haga click aqui para componer un articulo</label></td>
+    						<td class="columna_precio">{{formu.precio_unitario}}</td>
+    						<td class="columna_descuento">{{formu.descuento}}</td>
+    						<td class="columna_total"><label class="total">$ 0.00</label></td>
+    						<td><button class="btn btn-danger delete">Borrar</a></td>
+    					</tr>
+    					{% endfor %}
+    				</tbody>
+    			</table>
+    			<p><button id="add_item_factura" class="btn btn-primary">Agregar item</button></p>
+               	<div id="dato_comprobante_relacionado"> {{ facturaForm.comprobantes_relacionados.errors }} 
+               		<label for="id_comprobante_relacionado">Comprobante relacionado:</label> {{ facturaForm.comprobante_relacionado }} </div>
+            </div>
+        </div>
+        <div class="form-group">
+        	<label class="col-md-1 control-label">Subtotal</label>
+        	<label class="col-md-1 control-label" id="importe_subtotal">0.00</label>
+        	<label class="col-md-1 control-label" for="id_descuento">Descuento</label>
+        	<div class="col-md-1">{{ facturaForm.descuento }}</div>
+            <label class="col-md-1 control-label">Neto</label>
+            <label class="col-md-1 control-label" id="importe_neto">0.00</label>
+            <label class="col-md-1 control-label">IVA</label>
+            <label class="col-md-1 control-label" id="importe_iva">0.00</label>
+            <label class="col-md-1 control-label"><strong>TOTAL</strong></label>
+        	<label class="col-md-1 control-label" id="importe_total"><strong>0.00</strong></label>
+        </div>
+        <input class="btn btn-primary" value="GRABAR" type="submit"> 
+        </form>
+    </div>
+        </form>
+        </div>
+    {% endblock %}

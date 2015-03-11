@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block headExtras %}
+<script type="text/javascript">
+$(document).ready(function () {
+     
+    $("#imp_comprob").click(function (event){
+                    var url = $(this).attr("href");
+                    window.open(url)
+					event.preventDefault();
+                });
+      });
+</script>
+{% endblock %}
+
+{% block container %}
+<div id="cont" class="container">
+<div class="page_header"><h1>Facturación <small>Comprobante Aprobado</small></h1></div> 
+	<div class="row">
+		<div class="col-md-12"><h3>{% if obs %}El comprobante ha sido aprobado con observaciones.
+			{% else %} El comprobante ha sido aprobado.</h3></div>{% endif %}
+	</div>
+	<div class="row">
+		<div class="col-md-3">
+			<h4><strong>CAE:</strong> {{comprobante.cae}}</h4>
+		</div>
+		<div class="col-md-3">
+			<h4><strong>Fecha Vto:</strong> {{comprobante.fvto_cae|date:"d/m/Y"}}</h4>
+		</div>
+	</div>
+	{% if obs %}
+	<div class="row">
+		<div class="col-md-12">
+			<h4><strong>Observaciones:</strong></h4>
+		</div>
+		<div class="col-md-12">
+			<ul>
+			{% for o in obs %}
+			<li>{{o}}</li>
+			{% endfor %}
+			</ul>
+		</div>
+	</div>
+	{% endif %}
+	<div class="row">
+		<div class="col-md-12">
+			<a href="{% url 'home' %}" class="btn btn-default" role="button">Ir a principal</a>
+			<a id="imp_comprob" href="{% url "imprimirComprobante" comprobante.id%}" class="btn btn-primary" role="button">Impr. Comprobante</a>
+			{% if comprobante.condicion_venta.descripcion == "Contado" %}
+			<a id="gen_recibo" href="{% url "nuevoReciboContado" comprobante.id %}" class="btn btn-primary" role="button">Gen. Recibo</a>
+			{% endif %}
+	    </div>
+	</div>	
+</div>
+{% endblock %}

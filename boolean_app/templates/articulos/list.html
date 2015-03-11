@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% load staticfiles %}
+
+{% block headExtras %}
+<script src="//cdn.datatables.net/1.10.2/js/jquery.dataTables.min.js"></script>
+<link rel="stylesheet" href="//cdn.datatables.net/1.10.2/css/jquery.dataTables.css" />
+
+<script>
+
+$(document).ready(function() {
+    $('#articulos').dataTable( {
+        "language": {
+                "url": "//cdn.datatables.net/plug-ins/725b2a2115b/i18n/Spanish.json"
+            },
+        "processing": true,
+        "serverSide": true,
+        "ajax": {
+            "url": "{% url "art_datatables" %}",
+            "data": function ( d ) {
+                d.desde = "mainArticulos";
+            }}
+    } );
+} );
+
+</script>
+
+{% endblock %}
+
+
+{% block container %}
+
+<div id="cont">
+
+<a href="{% url "nuevoArticulo" %}">Nuevo</a>
+
+<table id="articulos" class="display" cellspacing="0" width="100%">
+	<thead><tr>
+		<th>Código</th>
+		<th>Código Fábrica</th>
+		<th>Denominación</th>
+		<th>Linea</th>
+		<th>Rubro</th>
+		<th>Ultimo Precio</th>
+		<th>Acciones</th>
+	</tr></thead>
+	
+	<tfoot><tr>
+		<th>Código</th>
+		<th>Código Fábrica</th>
+		<th>Denominación</th>
+		<th>Linea</th>
+		<th>Rubro</th>
+		<th>Ultimo Precio</th>
+		<th>Acciones</th>
+	</tr></tfoot>
+</table>
+</div>
+
+{% endblock %}

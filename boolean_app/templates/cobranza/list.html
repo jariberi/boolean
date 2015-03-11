@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% load staticfiles %}
+
+{% block headExtras %}
+<script src="//cdn.datatables.net/1.10.2/js/jquery.dataTables.min.js"></script>
+<link rel="stylesheet" href="//cdn.datatables.net/1.10.2/css/jquery.dataTables.css" />
+<link rel="stylesheet" href="{% static "css/icons.css" %}" />
+
+<script>
+
+$(document).ready(function() {
+    $('#cobros').dataTable( {
+        "language": {
+                "url": "//cdn.datatables.net/plug-ins/725b2a2115b/i18n/Spanish.json"
+            },
+        "processing": true,
+        "serverSide": true,
+        "ajax": "{% url "cobros_datatables" %}"
+    });
+    
+    $("#cobros tbody").on("click",".imprimirRecibo",function(){
+		var url=$(this).attr('href');
+		window.open(url,'_blank');
+		return false;
+	});
+	
+
+});
+</script>
+
+{% endblock %}
+
+
+{% block container %}
+<div id="cont">
+<table id="cobros" class="display" cellspacing="0" width="100%">
+	<thead><tr>
+		<th>Fecha</th>
+		<th>Número</th>
+		<th>Cliente</th>
+		<th>Comprobantes</th>
+		<th>Total</th>
+		<th>Acciones</th>
+	</tr></thead>
+	
+	<tfoot><tr>
+		<th>Fecha</th>
+		<th>Número</th>
+		<th>Cliente</th>
+		<th>Comprobantes</th>
+		<th>Total</th>
+		<th>Acciones</th>
+	</tr></tfoot>
+</table>
+</div>
+{% endblock %}

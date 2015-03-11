@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+{% load staticfiles %}
+{% block headExtras %}
+<link rel="stylesheet" href="{% static "css/bootstrap-chosen.css" %}" type="text/css">
+<link rel="stylesheet" href="{% static "css/chosen.css" %}" type="text/css">
+<script src="{% static "js/chosen.jquery.js" %}" type="text/javascript"></script>
+
+<style>
+#costo_total::before,#precio_venta_1::before,#precio_venta_2::before,#precio_venta_3::before{
+	content: "$ "
+}
+
+</style>
+
+<script>
+$(document).ready(function () { 
+	//FUNCIONES
+	function redondear(numero, decimales) {
+		var flotante = parseFloat(numero);
+		var resultado = Math.round(flotante*Math.pow(10,decimales))/Math.pow(10,decimales);
+		return resultado.toFixed(decimales);
+		}
+	
+	function calcularCostoTotal(){
+		if ($("#id_costo_compra").val() && $("#id_descuento_compra").val()){
+			var descuento = parseFloat($("#id_costo_compra").val())*parseFloat($("#id_descuento_compra").val())/100;
+			$("#costo_total").text(redondear(parseFloat($("#id_costo_compra").val())-descuento,2));
+		}
+		else {$("#costo_total").text("0.00")}
+	}
+	
+	function calcularPrecioVenta1(){
+		if($("#id_costo_compra").val() && $("#id_descuento_compra").val() && $("#id_ganancia_venta").val()){
+			var pv = parseFloat($("#costo_total").text())*(parseFloat($("#id_ganancia_venta").val())/100+1)
+			$("#precio_venta_1").text(redondear(pv,2))
+		}
+		else{$("#precio_venta_1").text("0.00")}
+	}
+	
+	function calcularPrecioVenta2(){
+		if($("#id_costo_compra").val() && $("#id_descuento_compra").val() && $("#id_ganancia_venta2").val()){
+			var pv = parseFloat($("#costo_total").text())*(parseFloat($("#id_ganancia_venta2").val())/100+1)
+			$("#precio_venta_2").text(redondear(pv,2))
+		}
+		else{$("#precio_venta_2").text("0.00")}
+	}
+	
+	function calcularPrecioVenta3(){
+		if($("#id_costo_compra").val() && $("#id_descuento_compra").val() && $("#id_ganancia_venta3").val()){
+			var pv = parseFloat($("#costo_total").text())*(parseFloat($("#id_ganancia_venta3").val())/100+1)
+			$("#precio_venta_3").text(redondear(pv,2))
+		}
+		else{$("#precio_venta_3").text("0.00")}
+	}
+	
+	//HANDLERS
+	$("#id_costo_compra, #id_descuento_compra").on('change',function(){
+		calcularCostoTotal();
+		calcularPrecioVenta1();
+		calcularPrecioVenta2();
+		calcularPrecioVenta3();
+	});
+	
+	$("#id_ganancia_venta").on("change",function(){
+		calcularPrecioVenta1();
+	});
+	
+	$("#id_ganancia_venta2").on("change",function(){
+		calcularPrecioVenta2();
+	});
+	
+	$("#id_ganancia_venta3").on("change",function(){
+		calcularPrecioVenta3();
+	});
+	
+	
+$("input[type='text'], select").each(function() {
+$(this).addClass("form-control");
+});
+
+$("textarea").each(function() {
+	$(this).addClass("form-control");
+	$(this).attr("rows",3);
+	});
+
+$("#id_linea, #id_rubro, #id_unidad_medida, #id_proveedor_primario, #id_proveedor_secundario").chosen({disable_search_threshold: 8});
+
+calcularCostoTotal();
+calcularPrecioVenta1();
+calcularPrecioVenta2();
+calcularPrecioVenta3();
+});
+
+
+</script>
+
+{% endblock %}
+
+{% block container %}
+
+<div id="cont" class="container">
+<div class="page_header">
+	<h1>Artículos <small>Agregar nuevo artículo</small></h1>
+	</div>
+<form class="form-horizontal" method="post">{% csrf_token %}
+    <div class="panel panel-primary">
+  		<div class="panel-heading"><h3 class="panel-title">Información Principal</h3></div>
+  <div class="panel-body">
+    <div class="form-group">
+    	<label class="col-md-2 control-label" for="id_codigo">Código</label>
+    	<div class="col-md-2">{{form.codigo}}<span class="help-block texto-aclaratorio">{{form.codigo.help_text}}</span></div>
+    	<div class="col-md-2 text-danger">{{form.codigo.errors}}</div>
+    	<label class="col-md-2 control-label" for="id_codigo_fabrica">Código de fábrica</label>
+    	<div class="col-md-3">{{form.codigo_fabrica}}<span class="help-block texto-aclaratorio">{{form.codigo_fabrica.help_text}}</span></div>
+    	<div class="col-md-2 text-danger">{{form.codigo_fabrica.errors}}</div>
+    </div>
+    <div class="form-group">
+    	<label class="col-md-2 control-label" for="id_denominacion">Denominación</label>
+    	<div class="col-md-10">{{form.denominacion}}<span class="help-block texto-aclaratorio">{{form.denominacion.help_text}}</span></div>
+    </div>
+    <div class="form-group">
+    	{{form.informacion_adicional.errors}}<label class="col-md-2 control-label" for="id_informacion_adicional">Información adicional</label>
+    	<div class="col-md-10">{{form.informacion_adicional}}<span class="help-block texto-aclaratorio">{{form.informacion_adicional.help_text}}</span></div>
+    </div>
+    <div class="form-group">
+	<label class="col-md-2 control-label" for="id_rubro">Rubro</label>
+	<div class="col-md-3">{{form.rubro}}<span class="help-block texto-aclaratorio">{{form.rubro.help_text}}</span></div>
+	<label class="col-md-1 control-label" for="id_linea">Linea</label>
+	<div class="col-md-2">{{form.linea}}<span class="help-block texto-aclaratorio">{{form.linea.help_text}}</span></div>
+	<label class="col-md-2 control-label" for="id_unidad_medida">Unidad de medida</label>
+	<div class="col-md-2">{{form.unidad_medida}}<span class="help-block texto-aclaratorio">{{form.unidad_medida.help_text}}</span></div>
+</div>
+<div class="form-group">
+<label class="col-md-2 control-label" for="id_proveedor_primario">Proveedor primario</label>
+<div class="col-md-4">{{form.proveedor_primario}}<span class="help-block texto-aclaratorio">{{form.proveedor_primario.help_text}}</span></div>
+<label class="col-md-2 control-label" for="id_proveedor_secundario">Proveedor secundario</label>
+<div class="col-md-4">{{form.proveedor_secundario}}<span class="help-block texto-aclaratorio">{{form.proveedor_secundario.help_text}}</span></div>
+</div>
+    </div></div>
+    <!--Segundo panel, costos y precios-->
+    <div class="panel panel-primary">
+		<div class="panel-heading"><h3 class="panel-title">Costos y precios</h3></div>
+<div class="panel-body">
+<div class="form-group">
+	<label class="col-md-2 control-label" for="id_costo_compra">Costo de compra</label>
+	<div class="col-md-2">{{form.costo_compra}}<span class="help-block texto-aclaratorio">{{form.costo_compra.help_text}}</span></div>
+	<label class="col-md-2 control-label" for="id_descuento_compra">Descuento:</label>
+	<div class="col-md-2">{{form.descuento_compra}}<span class="help-block texto-aclaratorio">{{form.descuento_compra.help_text}}</span></div>
+	<label class="col-md-2 control-label">Costo total:</label>
+	<label id="costo_total" class="col-md-1 control-label">0.00</label>
+</div>
+<div class="form-group">
+	<label class="col-md-2 control-label" for="id_ganancia_venta">Ganancia lista 1</label>
+	<div class="col-md-2">{{form.ganancia_venta}}<span class="help-block texto-aclaratorio">{{form.ganancia_venta.help_text}}</span></div>
+	<label class="col-md-2 control-label" for="id_ganancia_venta2">Ganancia lista 2</label>
+	<div class="col-md-2">{{form.ganancia_venta2}}<span class="help-block texto-aclaratorio">{{form.ganancia_venta2.help_text}}</span></div>
+	<label class="col-md-2 control-label" for="id_ganancia_venta3">Ganancia lista 3</label>
+	<div class="col-md-2">{{form.ganancia_venta3}}<span class="help-block texto-aclaratorio">{{form.ganancia_venta3.help_text}}</span></div>
+</div>
+<div class="form-group">
+<label class="col-md-2 control-label">Precio venta 1</label>
+<label id="precio_venta_1" class="col-md-1 control-label">0.00</label>
+<label class="col-md-2  col-md-offset-1 control-label">Precio venta 2</label>
+<label id="precio_venta_2" class="col-md-1 control-label">0.00</label>
+<label class="col-md-2 col-md-offset-1 control-label">Precio venta 3</label>
+<label id="precio_venta_3" class="col-md-1 control-label">0.00</label>
+</div>
+</div></div>
+    <!--{{ form.as_p }}-->
+    <input type="submit" value="Aceptar" />
+    <input type="reset" value="Deshacer cambios" />
+    <input type="button" value="Cancelar" onclick="history.back()">
+</form>
+</div>
+{% endblock %}

@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block container %}
+<div id="cont">
+<form method="post">{% csrf_token %}
+    {{ form.as_p }}
+    <input type="submit" value="Aceptar" />
+    <input type="reset" value="Deshacer cambios" />
+    <input type="button" value="Cancelar" onclick="history.back()">
+</form>
+</div>
+{% endblock %}

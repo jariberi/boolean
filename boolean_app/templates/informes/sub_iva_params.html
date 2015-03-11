@@ -1,0 +1,58 @@
+{% extends "base.html" %} 
+{% load staticfiles %}
+{% block headExtras %}
+    <link rel="stylesheet" href="{% static "css/chosen.css" %}" type="text/css">
+    <script src="{% static "js/chosen.jquery.js" %}" type="text/javascript"></script>
+    <script>
+    $(document).ready(function () {
+    	$("#fechas").hide();
+    
+    $("input[type=radio][name=por]").change(function () {
+    	if (this.value == 'periodo'){
+    		$("#fechas").hide();
+    		$("#periodo").show();
+    	}
+    	else if (this.value == 'fechas'){
+    		$("#periodo").hide();
+    		$("#fechas").show();
+    	}
+    
+    });
+    
+    
+    });
+
+</script>
+    <style type="text/css">
+#cont {  
+  width: 900px;  
+  margin-left: auto;  
+  margin-right: auto;
+}
+</style>{% endblock %} 
+
+{% block container %}
+    <div id="cont">
+      <form action="" method="POST">{% csrf_token %}
+        {{subdiario.non_field_errors}}
+        <div class="params">
+          <div id="folio">
+          {{subdiario.folio_inicial.errors}}
+          <label for="id_folio_inicial">Folio inicial:</label>{{subdiario.folio_inicial}}
+          </div>	
+          Informar Por:<br>
+          <INPUT TYPE="radio" NAME="por" VALUE="periodo" checked>Periodo 
+		  <INPUT TYPE="radio" NAME="por" VALUE="fechas">Fechas<BR> 
+          <div id="periodo">
+          {{subdiario.periodo.errors}}
+          <label for="id_periodo">Periodo:</label>{{subdiario.periodo}}
+          </div>
+          <div id="fechas">
+          {{subdiario.fecha_desde.errors}}
+          <label for="id_fecha_desde">Fecha desde:</label>{{subdiario.fecha_desde}}
+          {{subdiario.fecha_hasta.errors}}
+          <label for="id_fecha_hasta">Fecha hasta:</label>{{subdiario.fecha_hasta}}
+          </div>
+        </div>
+        <input value="ACEPTAR" type="submit"></form> 
+    {% endblock %}

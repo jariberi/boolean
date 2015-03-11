@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block container %}
+
+<a href="{% url "nuevoLinea" %}">Nuevo</a>
+<div id="cont">
+<table border="1">
+	<thead><tr>
+		<th>Nombre</th>
+		<th>Acciones</th>
+	</thead></tr>
+	{% for linea in object_list %}
+	<tr>
+		<td>{{linea.nombre}}</td>
+		<td><a href="{% url "editarLinea" linea.id %}">EDITAR</a>  --  <a href="{% url "borrarLinea" linea.id %}">BORRAR</a></td>
+	</tr>
+	{% empty %}
+	<h2>No hay lineas todavía</h2>
+	{% endfor %}
+</table>
+</div>
+{% endblock %}

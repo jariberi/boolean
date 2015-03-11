@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% load staticfiles %}
+{% block headExtras %}
+	<link rel="stylesheet" href="//ajax.googleapis.com/ajax/libs/jqueryui/1.11.1/themes/smoothness/jquery-ui.css" />
+	<script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.11.1/jquery-ui.min.js"></script>
+	<link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/jquery.bootstrapvalidator/0.5.2/css/bootstrapValidator.min.css"/>
+	<script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/jquery.bootstrapvalidator/0.5.2/js/bootstrapValidator.min.js"></script>
+	<script type="text/javascript" src="http://bootstrapvalidator.com/vendor/bootstrapvalidator/js/language/es_ES.js"></script>
+	<link rel="stylesheet" href="{% static "css/bootstrap-chosen.css" %}" type="text/css">
+	<link rel="stylesheet" href="{% static "css/chosen.css" %}" type="text/css">
+	<script src="{% static "js/chosen.jquery.js" %}" type="text/javascript"></script>
+{% endblock %}
+
+{% block container %}
+<div id="cont" class="container">
+	<div class="page_header"><h1>Facturación <small>Aprobar comprobante</small></h1></div>
+
+
+<table class="table table-striped">
+	<thead><tr>
+		<th>Fecha/hora</th>
+		<th>Fecha de comprobante</th>
+		<th>Cliente</th>
+		<th>Total</th>
+		<th>Aprobar e imprimir</th>
+	</thead></tr>
+	{% for venta in object_list %}
+	<tr>
+		<td>{{venta.fecha_hora}}</td>
+		<td>{{venta.fecha}}</td>
+		<td>{{venta.cliente.razon_social}}</td>
+		<td>{{venta.total}}</td>
+		<td><a href="{% url "afipAprobar" venta.id %}" class="btn btn-primary" role="button">APROBAR</a></td>
+	</tr>
+	{% empty %}
+	<h2>No hay facturas pendientes de aprobación.</h2>
+	{% endfor %}
+</table>
+</div>
+
+{% endblock %}

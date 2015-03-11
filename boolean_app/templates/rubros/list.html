@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block container %}
+<div id="cont" class="container">
+<a href="{% url "nuevoRubro" %}" class="btn btn-primary" role="button">Nuevo</a>
+
+<table border="1" class="table table-striped">
+	<thead><tr>
+		<th>Nombre</th>
+		<th>Acciones</th>
+	</thead></tr>
+	{% for rubro in object_list %}
+	<tr>
+		<td>{{rubro.nombre}}</td>
+		<td><a href="{% url "editarRubro" rubro.id %}" class="btn btn-primary" role="button">EDITAR</a> <a href="{% url "borrarRubro" rubro.id %}" class="btn btn-danger" role="button">BORRAR</a> <a href="{% url "actualizarPrecioRubro" rubro.id %}" class="btn btn-primary" role="button">ACT. PRECIO</a></td>
+	</tr>
+	{% empty %}
+	<h2>No hay rubros todavía</h2>
+	{% endfor %}
+</table>
+</div>
+{% endblock %}

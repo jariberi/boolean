@@ -1,0 +1,403 @@
+{% extends "base.html" %} 
+{% load staticfiles %}
+{% block headExtras %}
+    <link rel="stylesheet" href="{% static "css/chosen.css" %}" type="text/css">
+    <script src="{% static "js/chosen.jquery.js" %}" type="text/javascript"></script>
+    <script src="{% static "js/jquery.spin.js" %}" type="text/javascript"></script>
+    <link rel="stylesheet" href="//ajax.googleapis.com/ajax/libs/jqueryui/1.11.1/themes/smoothness/jquery-ui.css" />
+	<script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.11.1/jquery-ui.min.js"></script>
+    <script src="//cdn.datatables.net/1.10.2/js/jquery.dataTables.min.js"></script>
+	<link rel="stylesheet" href="//cdn.datatables.net/1.10.2/css/jquery.dataTables.css" />
+	<link rel="stylesheet" href="{% static "css/bootstrap-chosen.css" %}" type="text/css">
+	<!--<script src="//cdn.datatables.net/plug-ins/a5734b29083/integration/bootstrap/3/dataTables.bootstrap.js"></script>
+	<link rel="stylesheet" href="//cdn.datatables.net/plug-ins/a5734b29083/integration/bootstrap/3/dataTables.bootstrap.css" />-->
+	<link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/jquery.bootstrapvalidator/0.5.2/css/bootstrapValidator.min.css"/>
+	<script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/jquery.bootstrapvalidator/0.5.2/js/bootstrapValidator.min.js"></script>
+	<script type="text/javascript" src="http://bootstrapvalidator.com/vendor/bootstrapvalidator/js/language/es_ES.js"></script>
+    <script>
+    
+$(document).ready(function () {  
+  //Variables globales
+  var subtotal_factura=0;
+  var iva = new Array()
+  iva["10.5%"]=0
+  iva["21%"]=0
+  iva["27%"]=0
+  var total=0;
+  var es_b = false;
+  
+  
+  //FUNCIONES AUXILIARES
+  
+  function redondear(numero, decimales) {
+	var flotante = parseFloat(numero);
+	var resultado = Math.round(flotante*Math.pow(10,decimales))/Math.pow(10,decimales);
+	return resultado.toFixed(decimales);
+	}
+  
+  function actualizarIVAS(){
+	  iva["10.5%"]=iva["21%"]=iva["27%"]=0
+	  $("#detalle_compra .item").each(function(){
+		  var alic=$(this).find(".iva_select option:selected").text()
+		  iva[alic]=iva[alic]+parseFloat($(this).find(".iva_valor_input").val())
+	  })
+  }
+    
+    function actualizarTotalesFactura() {
+    	var neto=0
+    	$("#detalle_compra .item").each(function (){
+    		neto = neto + parseFloat($(this).find(".cantidad_input").val())*parseFloat($(this).find(".precio_unitario_input").val());
+		});
+    	$("#importe_neto").text(redondear(neto,2));
+    	console.log(iva["10.5%"],iva["21%"],iva["27%"])
+    	$("#importe_iva_105").text(iva["10.5%"]);
+    	$("#importe_iva_21").text(iva["21%"]);
+    	$("#importe_iva_27").text(iva["27%"]);
+    	var exento = parseFloat($("#id_exento").val());
+    	var ing_brutos = parseFloat($("#id_ingresos_brutos").val());
+    	var perc_iva = parseFloat($("#id_percepcion_iva").val());
+    	var imp_interno = parseFloat($("#id_impuesto_interno").val());
+    	var redondeo = parseFloat($("#id_redondeo").val());
+    	var total=neto+iva["10.5%"]+iva["21%"]+iva["27%"]+exento+ing_brutos+perc_iva+imp_interno+redondeo
+    	$("#importe_total").text(redondear(total,2));
+    }
+    
+    //Paso como param la fila que se agrego o actualizo
+    function actualizarPTItemFactura(row) {
+    	if ($(row).find(".cantidad_input").val() && $(row).find(".precio_unitario_input").val()){
+    		var cantidad=parseFloat($(row).find(".cantidad_input").val())
+    		var pu = parseFloat($(row).find(".precio_unitario_input").val())
+    		var iva = parseFloat($(row).find(".iva_valor_input").val())
+    		$(row).find(".total").text(redondear((pu*cantidad)+iva,2));
+    		actualizarTotalesFactura();
+  		} else { $(row).find(".total").text("0.00"); }
+    }
+    
+    function actualizarIVAItemFactura(row){
+    	if ($(row).find(".cantidad_input").val() && $(row).find(".precio_unitario_input").val()){
+    		var alic=parseFloat($(row).find(".iva_select").val())
+    		var tot=parseFloat($(row).find(".cantidad_input").val())*parseFloat($(row).find(".precio_unitario_input").val());
+    		var val=tot*alic/100
+    		$(row).find(".iva_valor_input").val(redondear(val,2));
+    		actualizarIVAS()
+    		}
+    	else {$(row).find(".iva_valor_input").val();}
+    		
+    }
+        
+    // Code adapted from http://djangosnippets.org/snippets/1389/  
+    function updateElementIndex(el, prefix, ndx) {
+        var id_regex = new RegExp('(' + prefix + '-\\d+-)');
+        var replacement = prefix + '-' + ndx + '-';
+        if ($(el).attr("for")) $(el).attr("for", $(el).attr("for").replace(id_regex,
+        replacement));
+        if (el.id) el.id = el.id.replace(id_regex, replacement);
+        if (el.name) el.name = el.name.replace(id_regex, replacement);
+    }
+
+    function deleteItemFactura(btn, prefix) {
+        var formCount = parseInt($('#id_' + prefix + '-TOTAL_FORMS').val());
+        if (formCount > 1) {
+            // Delete the item/form
+            var el_total = $(btn).parents('.item').find('.total');
+            var total_articulo = parseFloat(el_total.text().replace("$ ",""));
+            subtotal_factura = subtotal_factura - total_articulo;
+            actualizarTotalesFactura();
+            $(btn).parents('.item').remove();
+            var forms = $('.item'); // Get all the forms  
+            // Update the total number of forms (1 less than before)
+            $('#id_' + prefix + '-TOTAL_FORMS').val(forms.length);
+            var i = 0;
+            // Go through the forms and set their indices, names and IDs
+            for (formCount = forms.length; i < formCount; i++) {
+                $(forms.get(i)).children().children().each(function () {
+                    updateElementIndex(this, prefix, i);
+                });
+            }
+        } // End if
+        else {
+            alert("La factura debe contener al menos un item");
+        }
+        return false;
+    }
+    
+    
+
+    function addItemFactura(btn, prefix) {
+        var formCount = parseInt($('#id_' + prefix + '-TOTAL_FORMS').val());
+        // You can only submit a maximum of 10 todo items 
+        if (formCount < 20) {
+            // Clone a form (without event handlers) from the first form
+            var row = $(".item:first").clone(false).get(0);
+            // Insert it after the last form
+            $(row).removeAttr('id').hide().insertAfter(".item:last").slideDown(300);
+
+            // Remove the bits we don't want in the new row/form
+            // e.g. error messages
+            $(".errorlist", row).remove();
+            $(row).children().removeClass("error");
+            
+            // Relabel or rename all the relevant bits
+            $(row).children().children().each(function () {
+                updateElementIndex(this, prefix, formCount);
+                $(this).val("");
+                $(this).removeAttr('value');
+            });
+                        
+            //Acomodo los campos
+            $(row).find(".total").text("0.00");
+            $(row).find(".descuento_input").val("0.00");
+            $(row).find(".iva_select").val(21);
+            if ($("#id_tipo").val().match("C$")){
+            	$(row).find(".iva_select").val(0)
+            	$(row).find(".iva_select").attr("disabled",true)
+            	$(row).find(".iva_monto_input").val(0.00)
+            	$(row).find(".iva_monto_input").attr("readonly",true)
+            }
+                        
+            // Agrego el handler para borrar, y actualizar los precios 
+            $(row).find(".delete").click(function () {
+                return deleteItemFactura(this, prefix);
+            });         
+            $(row).find(".cantidad_input").change(function() {
+            	actualizarIVAItemFactura($(this).parents(".item"));    
+            	actualizarPTItemFactura($(this).parents(".item"));	
+            });
+            $(row).find(".precio_unitario_input").change(function() {
+            	actualizarIVAItemFactura($(this).parents(".item"));    
+            	actualizarPTItemFactura($(this).parents(".item"));
+            });	
+            $(row).find(".iva_select").change(function() {
+            	actualizarIVAItemFactura($(this).parents(".item"));    
+            	actualizarPTItemFactura($(this).parents(".item"));
+            });
+    		//Habilito validadores
+    		$("form#comprobante-compra").bootstrapValidator('addField', $(row).find(".cantidad_input"));
+    		$("form#comprobante-compra").bootstrapValidator('addField', $(row).find(".precio_unitario_input"));
+    		$("form#comprobante-compra").bootstrapValidator('addField', $(row).find(".descuento_input"));
+    		$("form#comprobante-compra").bootstrapValidator('addField', $(row).find(".detalle_textarea"));
+            
+            // Update the total form count
+            $("#id_" + prefix + "-TOTAL_FORMS").val(formCount + 1);
+        } // End if
+        else {
+            alert("Solo se puede agregar 20 item por factura");
+        }
+        return false;
+    }
+    
+    
+    //ASOCIACIONES DE EVENTOS
+  	
+    //Evento de cambio de descuento
+    $("#id_punto_venta").on("change",function(){
+    	$(this).val(("0000" + $(this).val()).slice(-4));
+    })
+    
+    $("#id_numero").on("change",function(){
+    	$(this).val(("00000000" + $(this).val()).slice(-8));
+    })
+    
+    
+    //Evento de cambio de cantidad de articulo
+    $("#detalle_compra .cantidad_input, #detalle_compra .precio_unitario_input, #detalle_compra .iva_select").change(function() {
+    	actualizarIVAItemFactura($(this).parents(".item"));    
+    	actualizarPTItemFactura($(this).parents(".item"));	
+    });
+    
+    // Evento de cambio de seleccion de tipo de comprobante
+    $("#id_tipo").change(function() {
+    	if($(this).val().match("C$")){
+    		$("#detalle_compra .item").find(".iva_select").each(function(){
+    			$(this).val(0)
+    			$(this).attr("readonly",true)
+    		})
+    		$("#detalle_compra .item").find(".iva_valor_input").each(function(){
+    			$(this).val(0.00)
+    			$(this).attr("readonly",true)
+    		})
+    	}
+    	else {
+    		$("#detalle_compra .item").find(".iva_select").each(function(){
+    			$(this).attr("readonly",false)
+    		})
+    		$("#detalle_compra .item").find(".iva_valor_input").each(function(){
+    			$(this).val("")
+    			$(this).attr("readonly",false)
+    		})
+    	}
+    	//return buscarPtoVtaYNumComp(this);
+    });
+    
+    // Register the click event handlers
+    $("#add_item_factura").click(function () {
+        return addItemFactura(this, "form");
+    });
+
+    $("#detalle_compra .delete").click(function () {
+    	console.log("Evento: borro item factura");
+        return deleteItemFactura(this, "det_venta");
+    })
+    
+    $("#id_exento, #id_ingresos_brutos, #id_percepcion_iva, #id_redondeo, #id_impuesto_interno").change(function(){
+    	actualizarTotalesFactura()
+    })
+    
+    //EJECUTABLES
+    
+    //$("#id_cliente").chosen({width: "450px",no_results_text: "No se encontraron clientes con ese nombre"});
+   
+  	$('form').keypress(function(e){   
+    	if(e == 13){
+      		return false;
+    	}
+  	});
+
+  	$('input').keypress(function(e){
+    	if(e.which == 13){
+      		return false;
+    	}
+  	});
+  	
+  	$("#id_proveedor").chosen();
+ 
+   
+     
+    //VALIDADOR!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    $("form#comprobante-compra").bootstrapValidator({
+    	container:'popover',
+    	feedbackIcons: {
+            valid: 'glyphicon glyphicon-ok',
+            invalid: 'glyphicon glyphicon-remove',
+            validating: 'glyphicon glyphicon-refresh'
+        },
+        live:'submitted'
+    })
+});
+</script> <style type="text/css">
+#cont {
+  	padding: 52px 0 30px 0;  
+}
+
+#importe_neto::before,#importe_iva_105::before,#importe_iva_21::before,#importe_iva_27::before,#importe_total::before{
+	content:"$ ";
+}
+
+#id_punto_venta {
+	max-width: 100px;}
+}
+
+#id_numero {
+	max-width: 100px;}
+}
+
+</style>
+
+{% endblock %}
+
+{% block container %}
+    <div id="cont" class="container">
+    <div class="page_header"><h1>Compras <small>Registrar comprobante</small></h1></div>      
+    	<form id="comprobante-compra" class="form-horizontal" method="POST">{% csrf_token %}
+        	<div class="panel panel-primary">
+        		<div class="panel-heading"><h3 class="panel-title">Cabecera</h3></div>
+        		<div class="panel-body">
+        			<div class="form-group">
+        				<div class ="row">
+        					<div class="col-md-2">
+        						<label for="id_periodo">Periodo</label>
+        						{{ compraForm.periodo }}
+        					</div>
+        					<div class="col-md-2">
+    							<label for="id_fecha">Fecha</label>
+    							{{ compraForm.fecha }}
+    						</div>
+    						<div class="col-md-2">
+								<label for="id_tipo">Tipo</label>
+								{{ compraForm.tipo }}
+							</div>
+    						<div class="col-md-4" >
+								<label for="id_punto_venta">Numero</label><br>
+								<div class="form-inline">
+									{{ compraForm.punto_venta }} - {{ compraForm.numero }}
+								</div>
+							</div>
+						</div>
+						<div class ="row">
+    						<div class="col-md-5">
+    							<label for="id_proveedor">Proveedor</label>
+    							{{ compraForm.proveedor }}
+    						</div>
+    						<div class="col-md-3">
+								<label for="id_condicion_compra">Cond. compra</label>
+								{{ compraForm.condicion_compra }}
+							</div>
+    					</div>
+    				</div>
+    			</div>
+    		</div>
+        <div class="panel panel-primary">
+    		<div class="panel-heading"><h3 class="panel-title">Detalle</h3></div>
+    		<div class="panel-body">
+    			{{ detalleCompraFormset.management_form }}
+    			<table id="detalle_compra" class="table table-condensed">
+    				<thead>
+    					<tr id="encabezado_detalle_comprobante_compra">
+    						<th>Cantidad</th>
+    						<th>Detalle</th>
+    						<th>Precio Unitario</th>
+    						<th>Alic IVA</th>
+    						<th>Valor IVA</th>
+    						<th>Total</th>
+    						<th>Borrar</th>
+    					</tr>
+    				</thead>
+    				<tbody>
+    					{% for formu in detalleCompraFormset.forms %}
+    					<tr class="item">
+    						<td>{{formu.cantidad}}</td>
+    						<td>{{formu.detalle}}</td>
+    						<td>{{formu.precio_unitario}}</td>
+    						<td>{{formu.iva}}</td>
+    						<td>{{formu.iva_valor}}</td>
+    						<td><label class="total">0.00</label></td>
+    						<td><button class="btn btn-danger delete">Borrar</a></td>
+    					</tr>
+    					{% endfor %}
+    				</tbody>
+    			</table>
+    			<p><button id="add_item_factura" class="btn btn-primary">Agregar item</button></p>
+            </div>
+        </div>
+        <div class="form-group">
+        	<label class="col-md-2 control-label">Neto</label>
+	        <label class="col-md-2 control-label" id="importe_neto">0.00</label>
+	        <label class="col-md-2 control-label">Exento</label>
+	        <div class="col-md-2">{{compraForm.exento}}</div>
+	        <label class="col-md-2 control-label">Imp. Interno</label>
+	        <div class="col-md-2">{{compraForm.impuesto_interno}}</div>
+	    </div>
+	    <div class="form-group">
+		    <label class="col-md-2 control-label">IVA 10.5%</label>
+		    <label class="col-md-2 control-label" id="importe_iva_105">0.00</label>
+		    <label class="col-md-2 control-label">Ing. Brutos</label>
+		    <div class="col-md-2">{{compraForm.ingresos_brutos}}</div>
+		    <label class="col-md-2 control-label">Redondeo</label>
+		    <div class="col-md-2">{{compraForm.redondeo}}</div>
+		</div>
+		<div class="form-group">
+			<label class="col-md-2 control-label">IVA 21%</label>
+			<label class="col-md-2 control-label" id="importe_iva_21">0.00</label>
+			<label class="col-md-2 control-label">Percep. IVA</label>
+			<div class="col-md-2">{{compraForm.percepcion_iva}}</div>
+		</div>
+        <div class="form-group">
+            <label class="col-md-2 control-label">IVA 27%</label>
+            <label class="col-md-2 control-label" id="importe_iva_27">0.00</label>
+            <label class="col-md-2 control-label"><strong>TOTAL</strong></label>
+        	<label class="col-md-6 control-label" id="importe_total"><strong>0.00</strong></label>
+        </div>
+        <input class="btn btn-primary" value="GRABAR" type="submit"> 
+        </form>
+    </div>
+    {% endblock %}

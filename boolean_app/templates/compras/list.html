@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% load staticfiles %}
+
+{% block headExtras %}
+<script src="//cdn.datatables.net/1.10.2/js/jquery.dataTables.min.js"></script>
+<link rel="stylesheet" href="//cdn.datatables.net/1.10.2/css/jquery.dataTables.css" />
+<link rel="stylesheet" href="{% static "css/icons.css" %}" />
+
+<script>
+
+$(document).ready(function() {
+    var table = $('#comprobantes_compra').DataTable( {
+    	"order": [ 0, 'desc' ],
+    	"columns": [
+            null,
+            null,
+            {"orderable":false,},
+            null,
+            {"orderable":      false,},
+            {"orderable":      false,},
+            {"orderable":      false,},
+            null,
+        ],
+        "language": {
+                "url": "//cdn.datatables.net/plug-ins/725b2a2115b/i18n/Spanish.json"
+            },
+        "processing": true,
+        "serverSide": true,
+        "ajax": "{% url "compras_datatables" %}"
+    });
+
+	/*$("#comprobantes tbody").on("click",".imprimirComprobante",function(){
+		var url=$(this).attr('href');
+		window.open(url,'_blank');
+		return false;
+	});
+	
+	$('#comprobantes tbody').on('click', 'td.details-control', function () {
+        var tr = $(this).closest('tr');
+        var row = table.row( tr );
+ 
+        if ( row.child.isShown() ) {
+            // This row is already open - close it
+            row.child.hide();
+            tr.removeClass('shown');
+        }
+        else {
+            // Open this row
+            console.log(row.data());
+            row.child(row.data()[0]).show();
+            tr.addClass('shown');
+        }
+    } );*/
+	
+
+});
+</script>
+
+{% endblock %}
+
+
+{% block container %}
+<div id="cont">
+<table id="comprobantes_compra" class="display" cellspacing="0" width="100%">
+	<thead><tr>
+		<th>Fecha</th>
+		<th>Tipo</th>
+		<th>Número</th>
+		<th>Proveedor</th>
+		<th>Neto</th>
+		<th>Iva</th>
+		<th>Total</th>
+		<th>Estado</th>
+	</tr></thead>
+	
+	<tfoot><tr>
+		<th>Fecha</th>
+		<th>Tipo</th>
+		<th>Número</th>
+		<th>Cliente</th>
+		<th>Neto</th>
+		<th>Iva</th>
+		<th>Total</th>
+		<th>Estado</th>
+	</tr></tfoot>
+</table>
+</div>
+
+{% endblock %}

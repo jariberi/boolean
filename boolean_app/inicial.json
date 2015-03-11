@@ -1,0 +1,82 @@
+[
+  {
+    "model": "boolean_app.Periodo",
+    "pk": 1,
+    "fields": {
+      "mes": "08",
+      "ano": "2014"
+    }
+  },
+  {
+    "model": "boolean_app.Bancos",
+    "pk": 1,
+    "fields": {
+      "nombre": "Banco Nación Argentina"
+    }
+  },
+  {
+    "model": "boolean_app.Bancos",
+    "pk": 2,
+    "fields": {
+      "nombre": "Banco Provincia de Córdoba"
+    }
+  },
+  {
+    "model": "boolean_app.Linea",
+    "pk": 1,
+    "fields": {
+      "nombre": "Productos"
+    }
+  },
+  {
+    "model": "boolean_app.Linea",
+    "pk": 2,
+    "fields": {
+      "nombre": "Bienes de Uso"
+    }
+  },
+  {
+    "model": "boolean_app.Linea",
+    "pk": 3,
+    "fields": {
+      "nombre": "Prestación de Servicios"
+    }
+  },
+  {
+    "model": "boolean_app.Linea",
+    "pk": 4,
+    "fields": {
+      "nombre": "Fabricación"
+    }
+  },
+  {
+    "model": "boolean_app.Condicion_venta",
+    "pk": 1,
+    "fields": {
+      "descripcion": "15  Dias - Pague En Termino"
+    }
+  },
+  {
+    "model": "boolean_app.Condicion_venta",
+    "pk": 2,
+    "fields": {
+      "descripcion": "Contado"
+    }
+  },
+  {
+    "model": "boolean_app.Transporte",
+    "pk": 1,
+    "fields": {
+      "nombre": "Propio"
+    }
+  },
+  {
+    "model": "boolean_app.Proveedor",
+    "pk": 1,
+    "fields": {
+      "razon_social": "Tu Proveedor",
+      "cuit": "30-34588593-7",
+      "modificado_por": 1
+    }
+  }
+]
