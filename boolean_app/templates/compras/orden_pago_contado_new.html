@@ -228,14 +228,14 @@ $(document).ready(function () {
     $(".seccion_transferencia").hide();
     $(".seccion_cheque").hide();
     
-    var pro= $("#id_proveedor").val()
-    $("input[name='proveedor'][type='hidden']").val(pro)
+    var pro= $("#id_proveedor").val();
+    $("input[name='proveedor'][type='hidden']").val(pro);
     
     $.get("/api/get_credito_valores_op/"+pro, function(data){
 		if (data) {
-			var json_val = JSON.parse(data)
+			var json_val = JSON.parse(data);
 			if (json_val) {
-				var html = 'A CREDITO: Cheque num: '+json_val.num_cheque+' - Monto credito: <label id="monto_a_credito">'+json_val.pendiente+'</label>'
+				var html = 'Monto credito: <label id="monto_a_credito">'+json_val.pendiente+'</label>';
 				$("#a_credito").html(html).show();
 				calcularTotalValores();
 				$("#id_credito_anterior").val(json_val.pendiente)

@@ -272,7 +272,7 @@ def facturar(request):
                     factura.comprobante_relacionado.pagado = True
                     factura.comprobante_relacionado.save()
                 #Resto de los saldos de otros comprobantes
-                otros_comp=Venta.objects.filter(Q(cliente=factura.cliente), Q(tipo__startswith="FA"), ~Q(saldo=0)).order_by('fecha')
+                otros_comp=Venta.objects.filter(Q(cliente=factura.cliente), Q(tipo__startswith="FA"), ~Q(saldo=0)).order_by('fecha','numero')
                 print "Otros comprob:  " %otros_comp
                 if otros_comp:
                     for comp in otros_comp:
@@ -307,7 +307,7 @@ def facturar(request):
                     articuloCompuesto = form.save(commit=False)
                     #Si es factura B, quito el iva.
                     articuloCompuesto.precio_unitario = articuloCompuesto.precio_unitario/Decimal('1.21') if\
-                    articuloCompuesto.detale_venta.venta.tipo[-1:]=='B' else articuloCompuesto.precio_unitario
+                    articuloCompuesto.detalLe_venta.venta.tipo[-1:]=='B' else articuloCompuesto.precio_unitario
                     articuloCompuesto.detalle_venta = dict_forms[int(id_deta)]
                     articuloCompuesto.descuento = dict_forms[int(id_deta)].descuento
                     articuloCompuesto.save()
@@ -1205,7 +1205,7 @@ def compra_new(request):
                 subtotal = subtotal*-1
                 saldo = saldo*-1
             #Resto de los saldos de otros comprobantes
-            otros_comp=Compra.objects.filter(Q(proveedor=factura.proveedor), ~Q(saldo=0)).order_by('fecha')
+            otros_comp=Compra.objects.filter(Q(proveedor=factura.proveedor), ~Q(saldo=0)).order_by('fecha','numero')
             print "Otros comprob:  " %otros_comp
             if otros_comp:
                 if (otros_comp[0].tipo.startswith('NC') and factura.tipo.startswith('NC')) or\

@@ -334,8 +334,9 @@ def get_credito_valores_op(request,proveedor):
     for op in proveedor.ordenpago_set.all():
         for valor in op.dinero_set.all():
             try:
-                if valor.chequetercero.pendiente_para_orden_pago > 0.009:
-                    obj = {'num_cheque':valor.chequetercero.numero, 'pendiente':'%.2f' %valor.chequetercero.pendiente_para_orden_pago}
+                #if valor.chequetercero.pendiente_para_orden_pago > 0.009:
+                if valor.pendiente_para_orden_pago > 0.009:
+                    obj = {'pendiente':'%.2f' %valor.pendiente_para_orden_pago}
                     s = StringIO()
                     json.dump(obj,s)
                     s.seek(0)

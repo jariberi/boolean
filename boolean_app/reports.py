@@ -27,10 +27,11 @@ class IVAVentas(Report):
     page_size = landscape(A4)
     #first_page_number=7
     
-    def __init__(self, queryset=None, fpn=0):
+    def __init__(self, queryset=None, fpn=1):
         print "INIT DE REPORTE"
         Report.__init__(self, queryset=queryset)
         self.first_page_number=fpn
+        print self.first_page_number
     
     class band_page_header(ReportBand):    
         height = 4*cm
