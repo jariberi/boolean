@@ -36,7 +36,9 @@ $(document).ready(function () {
 		$(".saldo_factura").each(function(){
 			total_facturas = total_facturas + parseFloat($(this).text().replace("$ ",""))
 		});
-		$("#total_facturas").text("$ "+redondear(total_facturas,2))
+		$("#total_facturas").text("$ "+redondear(total_facturas,2));
+		var tot_desc= total_facturas - credito;
+		$("#total_facturas_credito").text("$ "+redondear(tot_desc,2));
 	}
 	
 	function calcularEntregaFacturas(){
@@ -45,6 +47,8 @@ $(document).ready(function () {
 			total_entregas = total_entregas + parseFloat($(this).val())
 		});
 		$("#total_entregas").text("$ "+redondear(total_entregas,2))
+		var tot_entr_desc= total_entregas - credito;
+		$("#total_entregas_credito").text("$ "+redondear(tot_entr_desc,2));
 	}
 	
 	function calcularTotalValores(){
@@ -231,13 +235,23 @@ $(document).ready(function () {
 		if (data) {
 			var json_val = JSON.parse(data)
 			if (json_val) {
-				var html = 'A CREDITO: $<label id="monto_a_credito">'+json_val.pendiente+'</label>'
-				$("#a_credito").html(html).show();
-				calcularTotalValores();
+				//var html = 'A CREDITO: $<label id="monto_a_credito">'+json_val.pendiente+'</label>'
+				//$("#a_credito").html(html).show();
+				//calcularTotalValores();
+				credito = json_val.pendiente;
+    			$(".a_credito").html("$ -"+json_val.pendiente);
+    			calcularTotalFacturas();
+    			calcularEntregaFacturas();
 				//$("#id_credito_anterior").val(json_val.pendiente)
 			}
 		}
-		else {$("#a_credito").hide();}//$("#id_credito_anterior").val("0.00")}
+		else {
+			//$("#a_credito").hide();
+			$(".a_credito").html("$ 0.00");
+    		credito = 0;
+    		calcularTotalFacturas();
+    		calcularEntregaFacturas();
+			}//$("#id_credito_anterior").val("0.00")}
 	});
     $.get("/api/get_datos_cheque_defecto/"+cli, function(data){
 		if(data){
@@ -448,7 +462,7 @@ form .form-control-feedback {
         			<h4 class="modal-title">Error</h4>
         </div>
         <div class="modal-body">
-          <p>El total entregado supera al total de los valores. Verifique los datos ingresados.</p>
+          <p>El total declarado como entregado supera al total de los valores. Verifique los datos ingresados.</p>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-default" data-dismiss="modal">Cerrar</button>
@@ -536,7 +550,21 @@ form .form-control-feedback {
     				<th></th>
     				<th><label id="total_facturas">{{venta.TOTAL|unlocalize}}</label></th>
     				<th><label id="total_entregas">{{venta.TOTAL|unlocalize}}</label></th>
-    			</tr></tfoot>
+    			</tr>
+    			<tr>
+    					<th></th>
+    					<th></th>
+    					<th>A CREDITO</th>
+    					<th><label class="a_credito"></label></th>
+    					<th><label class="a_credito"></label></th>
+    				</tr>
+    				<tr>
+    					<th></th>
+    					<th></th>
+    					<th></th>
+    					<th><label id="total_facturas_credito"></label></th>
+    					<th><label id="total_entregas_credito"></label></th>
+    				</tr></tfoot>
     			</table>
     			</div></div>
     </section>

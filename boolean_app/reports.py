@@ -187,7 +187,7 @@ def impr_comprobante(request, pk):
             p.drawString(12.7*cm, 26.8*cm, 'FACTURA')
         elif venta.tipo[:2] == 'NC':
             p.drawString(12.7*cm, 26.8*cm, 'NOTA DE CREDITO')
-        elif venta.tipo[:2] == 'NC':
+        elif venta.tipo[:2] == 'ND':
             p.drawString(12.7*cm, 26.8*cm, 'NOTA DE DEBITO')
         p.drawString(12.1*cm, 27.7*cm, "N° %s  -" %venta.pto_vta_full())
         p.drawString(14.5*cm, 27.7*cm, venta.num_comp_full())
