@@ -265,29 +265,62 @@ def facturar(request):
             factura.iva21 = factura.neto * Decimal("0.21")
             factura.iva105 = 0
             factura.total = factura.saldo = factura.neto + factura.iva21
+            factura.save()
             #set_trace()
+            if factura.tipo.startswith("FA") or factura.tipo.startswith("ND"):
+                print "ESTO ES:  %s" %factura.tipo
+                print "SALDO DEL CLIENTE: %s" %factura.cliente.saldo
+                saldo_temp = factura.saldo
+                if factura.cliente.saldo < 0:#Esto significa que hay NC con saldos a descontar
+                    otros_comp=Venta.objects.filter(Q(cliente=factura.cliente), Q(tipo__startswith="NC"), ~Q(saldo=0)).order_by('fecha','numero')
+                    #print "Otros comprob:  " %otros_comp
+                    if otros_comp:
+                        for comp in otros_comp:
+                            if factura.saldo == 0:
+                                break
+                            if factura.saldo >= comp.saldo:
+                                factura.saldo -= comp.saldo
+                                comp.saldo = 0
+                                comp.save()
+                            else:
+                                comp.saldo -= factura.saldo
+                                factura.saldo = 0
+                                comp.save()
+                factura.save()
+                factura.cliente.saldo += saldo_temp
+                factura.cliente.save()
             if factura.tipo.startswith("NC"):
+                print "ESTO ES:  %s" %factura.tipo
+                saldo_temp = factura.saldo
                 factura.pagado=True
                 if factura.comprobante_relacionado.total-Decimal('0.009') < factura.total < factura.comprobante_relacionado.total+Decimal('0.009'):
                     factura.comprobante_relacionado.pagado = True
                     factura.comprobante_relacionado.save()
                 #Resto de los saldos de otros comprobantes
-                otros_comp=Venta.objects.filter(Q(cliente=factura.cliente), Q(tipo__startswith="FA"), ~Q(saldo=0)).order_by('fecha','numero')
-                print "Otros comprob:  " %otros_comp
-                if otros_comp:
-                    for comp in otros_comp:
-                        if factura.saldo == 0:
-                            break
-                        if factura.saldo >= comp.saldo:
-                            factura.saldo -= comp.saldo
-                            comp.saldo = 0
-                            comp.pagado = True
-                            comp.save()
-                        else:
-                            comp.saldo -= factura.saldo
-                            factura.saldo = 0
-                            comp.save()
-            factura.save()
+                print factura.cliente.saldo
+                print factura.cliente.saldo > 0
+                if factura.cliente.saldo > 0:#Esto significa que hay FA o ND con saldos a descontar
+                    print "SI HAY SALDO"
+                    otros_comp=Venta.objects.filter(Q(cliente=factura.cliente), Q(tipo__startswith="FA") | Q(tipo__startswith="ND"), ~Q(saldo=0)).order_by('fecha','numero')
+                    print otros_comp
+                    if otros_comp:
+                        for comp in otros_comp:
+                            print "COMP %s" %comp.numero
+                            if factura.saldo == 0:
+                                break
+                            if factura.saldo >= comp.saldo:
+                                print "SIIIIIII"
+                                factura.saldo -= comp.saldo
+                                comp.saldo = 0
+                                comp.pagado = True
+                                comp.save()
+                            else:
+                                comp.saldo -= factura.saldo
+                                factura.saldo = 0
+                                comp.save()
+                factura.save()
+                factura.cliente.saldo -= saldo_temp
+                factura.cliente.save()
             #factura.comprobante_relacionado.save()
             dict_forms={}
             i = 0
@@ -306,9 +339,9 @@ def facturar(request):
                     id_deta = form.cleaned_data['id_detalle_venta']
                     articuloCompuesto = form.save(commit=False)
                     #Si es factura B, quito el iva.
-                    articuloCompuesto.precio_unitario = articuloCompuesto.precio_unitario/Decimal('1.21') if\
-                    articuloCompuesto.detalLe_venta.venta.tipo[-1:]=='B' else articuloCompuesto.precio_unitario
                     articuloCompuesto.detalle_venta = dict_forms[int(id_deta)]
+                    articuloCompuesto.precio_unitario = articuloCompuesto.precio_unitario/Decimal('1.21') if \
+                    articuloCompuesto.detalle_venta.venta.tipo[-1:]=='B' else articuloCompuesto.precio_unitario
                     articuloCompuesto.descuento = dict_forms[int(id_deta)].descuento
                     articuloCompuesto.save()
             #set_trace()
@@ -491,22 +524,29 @@ def recibo(request):
         cobroFormset = DetalleCobroFormSet(request.POST, prefix='cobros')
         valoresFormset = ValoresFormSet(request.POST, prefix='valores')
         #set_trace()
+        print reciboForm.is_valid()
+        print reciboForm.errors 
+        print cobroFormset.is_valid() 
+        print valoresFormset.is_valid()
         if reciboForm.is_valid() and cobroFormset.is_valid() and valoresFormset.is_valid():
             #Inicializo variables de trabajo
             total_comprobantes=0#Suma de comprobantes cancelados, se usa en para calculo de credito a favor o vuelto
             recibo = reciboForm.save(commit=False)
             recibo.numero = get_num_recibo()#Obtengo numero de recibo, el ultimo mas 1            
-            cred_ant=recibo.cliente.saldo#Obtengo el credito del cliente, que quedaria pendiente del recibo anterior
-            print "Credito anterior: %s" %cred_ant
-            recibo.credito_anterior=cred_ant
-            recibo.save()
             #Veo que dinero de este cliente es el que tiene el saldo a favor, de encontrarlo lo dejo en 0
             try:
-                cheq=Dinero.objects.filter(recibo__cliente=recibo.cliente,pendiente_para_recibo=cred_ant)[0]
+                cheq=Dinero.objects.filter(Q(recibo__cliente=recibo.cliente), ~Q(pendiente_para_recibo=0))[0]
+                cred_ant = cheq.pendiente_para_recibo
                 cheq.pendiente_para_recibo=0
                 cheq.save()
             except IndexError:
                 pass
+            
+            #cred_ant=recibo.cliente.saldo#Obtengo el credito del cliente, que quedaria pendiente del recibo anterior
+            print "Credito anterior: %s" %cred_ant
+            recibo.credito_anterior=cred_ant
+            recibo.save()
+            
             '''
             Para cada uno de los detalles de cobro ingresados, creo el registro y verifico si el comprobante esta
             pagado, para ello busco todos los detalles de este comprobante y los sumo.
@@ -546,7 +586,8 @@ def recibo(request):
                 json.dump(obj,s)
                 s.seek(0)
                 return HttpResponse(s.read())'''
-            recibo.cliente.saldo=0#Dejo el saldo del cliente en 0
+            #recibo.cliente.saldo=0#Dejo el saldo del cliente en 0
+            recibo.cliente.saldo -= total_comp
             recibo.cliente.save()
             '''#Quito el pendiente del ultimo cheque
             lala=ChequeTercero.objects.filter(recibo__cliente=recibo.cliente).order_by('-pendiente_para_recibo')[0]
@@ -695,15 +736,17 @@ def recibo_contado(request,venta):
             #if Decimal(reciboForm.cleaned_data['credito_anterior']) > 0:
                 #Lo uso en la impresion de los recibos, NO lo voy a hacer con un metodo.
             #    Cobranza_credito_anterior.objects.create(recibo=recibo,monto=reciboForm.cleaned_data['credito_anterior'])
-            cred_ant=recibo.cliente.saldo
-            recibo.credito_anterior=cred_ant
-            recibo.save()
             try:
-                cheq=ChequeTercero.objects.filter(recibo__cliente=recibo.cliente,pendiente_para_recibo=cred_ant)[0]
+                cheq=Dinero.objects.filter(Q(recibo__cliente=recibo.cliente), ~Q(pendiente_para_recibo=0))[0]
+                cred_ant = cheq.pendiente_para_recibo
                 cheq.pendiente_para_recibo=0
                 cheq.save()
             except IndexError:
                 pass
+            #cred_ant=recibo.cliente.saldo#Obtengo el credito del cliente, que quedaria pendiente del recibo anterior
+            print "Credito anterior: %s" %cred_ant
+            recibo.credito_anterior=cred_ant
+            recibo.save()
             for detalle_cobro in cobroFormset.forms:
                 ve = Venta.objects.get(pk=detalle_cobro.cleaned_data['id_factura'])
                 Detalle_cobro.objects.create(recibo=recibo, venta=ve, monto=ve.total)
@@ -726,7 +769,7 @@ def recibo_contado(request,venta):
                 return HttpResponse(s.read())
             else:
                 #Dejo el saldo del cliente en 0
-                recibo.cliente.saldo=0
+                recibo.cliente.saldo -= total_comprobantes
                 recibo.cliente.save()
                 for valor in valoresFormset.forms:
                     #set_trace()
