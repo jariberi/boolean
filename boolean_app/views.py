@@ -540,7 +540,9 @@ def recibo(request):
                 cheq.pendiente_para_recibo=0
                 cheq.save()
             except IndexError:
+                cred_ant=0
                 pass
+                
             
             #cred_ant=recibo.cliente.saldo#Obtengo el credito del cliente, que quedaria pendiente del recibo anterior
             print "Credito anterior: %s" %cred_ant
@@ -555,22 +557,30 @@ def recibo(request):
                 if detalle_cobro.cleaned_data['pagar']:
                     if Decimal(detalle_cobro.cleaned_data['pagar'])>0:
                         total_comprobantes+=detalle_cobro.cleaned_data['pagar']
+                        print total_comprobantes
                         ve = Venta.objects.get(pk=detalle_cobro.cleaned_data['id_factura'])
                         Detalle_cobro.objects.create(recibo=recibo, venta=ve, monto=detalle_cobro.cleaned_data['pagar'])
                         #Ya estan creados todos detalle de cobro de esta factura. Reviso si la factura esta completamente pagada.
-                        cobrado_total = Detalle_cobro.objects.filter(venta=ve).aggregate(Sum('monto'))
-                        print cobrado_total
-                        nc_total = Venta.objects.filter(comprobante_relacionado=ve).aggregate(Sum('total'))
-                        print nc_total
-                        todo_f = cobrado_total['monto__sum'] if cobrado_total['monto__sum'] else Decimal('0.00')
-                        todo_nc =  nc_total['total__sum'] if nc_total['total__sum'] else Decimal('0.00')
-                        todo = todo_f + todo_nc
-                        print todo
-                        print ve.total-Decimal('0.009')
-                        print ve.total+Decimal('0.009')
-                        if (ve.total-Decimal('0.009') <= todo <= ve.total+Decimal('0.009')):
+                        ve.saldo -= detalle_cobro.cleaned_data['pagar']
+                        ve.save()
+                        print ve.saldo
+                        if ve.saldo - Decimal('0.009') <= 0:
                             ve.pagado=True
                             ve.save()
+                            
+                        #cobrado_total = Detalle_cobro.objects.filter(venta=ve).aggregate(Sum('monto'))
+                        #print cobrado_total
+                        #nc_total = Venta.objects.filter(comprobante_relacionado=ve).aggregate(Sum('total'))
+                        #print nc_total
+                        #todo_f = cobrado_total['monto__sum'] if cobrado_total['monto__sum'] else Decimal('0.00')
+                        #todo_nc =  nc_total['total__sum'] if nc_total['total__sum'] else Decimal('0.00')
+                        #todo = todo_f + todo_nc
+                        #print todo
+                        #print ve.total-Decimal('0.009')
+                        #print ve.total+Decimal('0.009')
+                        #if (ve.total-Decimal('0.009') <= todo <= ve.total+Decimal('0.009')):
+                            #ve.pagado=True
+                            #ve.save()
             total_comp = total_comprobantes
             #Cubro los comprobantes con el credito
             '''if total_comprobantes <= cred_ant + Decimal(0.009):
@@ -587,7 +597,10 @@ def recibo(request):
                 s.seek(0)
                 return HttpResponse(s.read())'''
             #recibo.cliente.saldo=0#Dejo el saldo del cliente en 0
+            print total_comp
+            print recibo.cliente.saldo
             recibo.cliente.saldo -= total_comp
+            print recibo.cliente.saldo
             recibo.cliente.save()
             '''#Quito el pendiente del ultimo cheque
             lala=ChequeTercero.objects.filter(recibo__cliente=recibo.cliente).order_by('-pendiente_para_recibo')[0]
@@ -685,8 +698,11 @@ def recibo(request):
                                                                      monto=valor.cleaned_data['monto'],\
                                                                      pendiente_para_recibo=valor.cleaned_data['monto']-total_comprobantes,\
                                                                      pendiente_para_orden_pago=0)
-                        recibo.cliente.saldo=valor.cleaned_data['monto']-total_comprobantes
-                        recibo.cliente.save()
+                        #recibo.cliente.saldo=valor.cleaned_data['monto']-total_comprobantes
+                        #recibo.cliente.save()
+                        print total_val
+                        print total_comp
+                        print cred_ant
                         recibo.a_cuenta=total_val-total_comp-cred_ant
                         recibo.save()                    
             obj = {'id':recibo.id}
@@ -742,7 +758,9 @@ def recibo_contado(request,venta):
                 cheq.pendiente_para_recibo=0
                 cheq.save()
             except IndexError:
+                cred_ant=0
                 pass
+            
             #cred_ant=recibo.cliente.saldo#Obtengo el credito del cliente, que quedaria pendiente del recibo anterior
             print "Credito anterior: %s" %cred_ant
             recibo.credito_anterior=cred_ant

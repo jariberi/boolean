@@ -239,7 +239,7 @@ def impr_recibo(request,pk):
     mita = 14.8
     #Inicializo todos los comprobantes y valores
     recibo = Recibo.objects.get(pk=pk)
-    a_cuenta = recibo.get_a_credito()
+    a_cuenta = recibo.a_cuenta
     #Datos de comprobantes
     comprobantes = recibo.detalle_cobro_set.all()
     #a_cuenta = recibo.cobranza_a_cuenta_set.all()

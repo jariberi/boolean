@@ -117,11 +117,10 @@ class SubdiarioIVAVentPeriodoFecha(Form):
         return cleaned_data
         
 class ReciboForm(ModelForm):
-    credito_anterior = forms.CharField(widget=forms.HiddenInput(), initial=0.00)
     que_hago_con_diferencia = forms.ChoiceField(widget=forms.RadioSelect(),choices=(('credito','Dejar a crédito'),('vuelto','Dar vuelto')),initial='credito')
     class Meta:
         model = Recibo
-        exclude = ('venta',)
+        exclude = ('venta', 'credito_anterior', 'a_cuenta')
         widgets = {
                    'cliente': forms.Select(attrs={'data-placeholder':'Elija un cliente...'}),
                    }
