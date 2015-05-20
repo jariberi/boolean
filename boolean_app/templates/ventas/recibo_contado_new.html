@@ -16,6 +16,7 @@ $(document).ready(function () {
 	var total_facturas;
 	var total_valores;
 	var total_entregas;
+	var credito;
 	var html_spinner = '<div class="spinner">\
 		  				<div class="rect1"></div>\
 						<div class="rect2"></div>\
@@ -43,8 +44,8 @@ $(document).ready(function () {
 	
 	function calcularEntregaFacturas(){
 		total_entregas = 0;
-		$(".entrega_input").each(function(){
-			total_entregas = total_entregas + parseFloat($(this).val())
+		$(".entrega_factura").each(function(){
+			total_entregas = total_entregas + parseFloat($(this).text())
 		});
 		$("#total_entregas").text("$ "+redondear(total_entregas,2))
 		var tot_entr_desc= total_entregas - credito;
@@ -230,8 +231,11 @@ $(document).ready(function () {
 		$(this).addClass("form-control");
 		});
   
-    var cli = $("#id_cliente").val()
+    var cli = $("#id_cliente").val();
+    console.log("Cliente:" +cli);
     $.get("/api/get_credito_valores/"+cli, function(data){
+		console.log("lalalalala");
+		console.log(data);
 		if (data) {
 			var json_val = JSON.parse(data)
 			if (json_val) {
@@ -247,6 +251,7 @@ $(document).ready(function () {
 		}
 		else {
 			//$("#a_credito").hide();
+			console.log("LELELELE");
 			$(".a_credito").html("$ 0.00");
     		credito = 0;
     		calcularTotalFacturas();

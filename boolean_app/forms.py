@@ -130,7 +130,7 @@ class ReciboContadoForm(ModelForm):
     #_lcliente = forms.IntegerField(widget=forms.HiddenInput())
     class Meta:
         model = Recibo
-        exclude = ('venta','credito_anterior',)
+        exclude = ('venta','credito_anterior', 'a_cuenta')
         widgets = {
                    'cliente': forms.Select(attrs={'disabled':'disabled'}),
                    }
