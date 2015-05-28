@@ -186,11 +186,11 @@ class Cliente(models.Model):
         fact=Q(tipo__startswith="FA")
         nd=Q(tipo__startswith="ND")
         apr=Q(aprobado=True)
-        fer=Q(recibo__fecha__lt=fecha)
+        #fer=Q(recibo__fecha__lt=fecha)
         fef=Q(fecha__lt=fecha)
         factynd = Venta.objects.filter(cli, apr, fef, fact | nd).aggregate(total=Sum("total")) 
         nc=Q(tipo__startswith="NC")
-        ncrs = Venta.objects.filter(cli, apr, fer, nc).aggregate(total=Sum("total"))
+        ncrs = Venta.objects.filter(cli, apr, fef, nc).aggregate(total=Sum("total"))
         recibos = Detalle_cobro.objects.filter(recibo__cliente=self, recibo__fecha__lte=fecha).aggregate(total=Sum("monto"))
         ret=0
         if factynd['total']:
@@ -513,6 +513,28 @@ class Venta(models.Model):
             resto -= cobro.monto
         #resto="3333"
         return resto
+    '''
+    @return: [String] Codigo segun tabla comprobantes AFIP
+    '''
+    @property
+    def codigo_comprobante_segun_afip(self):
+        if self.tipo=="FAA":
+            return "001"
+        elif self.tipo=="FAB":
+            return "006"
+        elif self.tipo=="NCA":
+            return "003"
+        elif self.tipo=="NCB":
+            return "008"
+        elif self.tipo=="NDA":
+            return "005"
+        elif self.tipo=="NDB":
+            return "007"
+    
+    @property
+    def codigo_moneda_segun_afip(self):
+        #Devuelve $ (pesos argentinos)
+        return 'PES'
 
 class Detalle_venta(models.Model):
     TIPO_ARTICULO_CHOICES = (

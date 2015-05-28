@@ -44,6 +44,12 @@ from afip_ws.wsaa import obtener_o_crear_permiso
 from afip_ws.wsfev1 import WSFEV1
 from StringIO import StringIO
 import json
+from zipfile import ZipFile
+import tempfile
+import os
+import platform
+import codecs
+#from django.core.files.temp import TemporaryFile
 
 
 class Home(TemplateView):
@@ -210,6 +216,12 @@ class ProveedoresModificar(UpdateView):
     model = Proveedor
     template_name = "proveedores/form.html"
     success_url = reverse_lazy("listaProveedores")
+    
+    def form_valid(self, form):
+        obj = form.save(commit=False)
+        obj.modificado_por = self.request.user
+        obj.save()
+        return HttpResponseRedirect(reverse_lazy('listaProveedores'))
     
 class ProveedoresBorrar(DeleteView):
     model = Proveedor
@@ -1799,3 +1811,227 @@ def proveedores_comp_saldo(request):
     c.update(csrf(request))
 
     return render_to_response('informes/proveedores_comp_saldo.html', c)
+
+def rg3685_ventas(request, periodo):
+    '''
+    VENTAS
+    '''
+    ventas = Venta.objects.filter(periodo__id=periodo).order_by("fecha")
+    if ventas:
+        ano=str(Periodo.objects.get(id=periodo).ano)
+        mes=str(Periodo.objects.get(id=periodo).mes)
+        #Inicializo archivos, Uso StringIO para trabajar directo en memoria.
+        z = StringIO()#Archivo zip, adentro estaran todos los txt
+        zf=ZipFile(z,'w')
+        a_comprobantes_v = StringIO()#Archivo de comprobantes de venta
+        a_alicuotas_v = StringIO()
+        for v in ventas:
+            #
+            #INICIO BLOQUE COMPROBANTES VENTAS
+            #
+            linea_cbte = u''#Unicode
+            #1 - Fecha de comprobante
+            linea_cbte += v.fecha.strftime("%Y%m%d")
+            #2 - Tipo de Comprobante
+            linea_cbte += v.codigo_comprobante_segun_afip
+            #3 - Punto de venta
+            linea_cbte += str(v.punto_venta).rjust(5,'0')
+            #4 - Numero de comprobante
+            linea_cbte += str(v.numero).rjust(20,'0')
+            #5 - Numero de comprobante hasta, igual que anterior
+            linea_cbte += str(v.numero).rjust(20,'0')
+            #6 - Codigo de documento del comprador
+            linea_cbte += '80' if v.cliente.cuit else '96' 
+            #7 - Numero de documento del cliente
+            linea_cbte += v.cliente.cuit.replace('-','').rjust(20,'0')
+            #8 - Apellido y nombre del comprador
+            if len(v.cliente.razon_social)>=31:
+                linea_cbte += v.cliente.razon_social[0:30]
+            else:
+                linea_cbte += v.cliente.razon_social.ljust(30,' ')
+            #9 - Importe total de la operacion
+            linea_cbte += str(v.total_2dec()).replace('.','').rjust(15,'0')
+            #10 - Total conceptos que no integran neto gravado
+            linea_cbte += '000000000000000'
+            #11 - Percepcion a no categorizados
+            linea_cbte += '000000000000000'
+            #12 - Importe de operaciones exentas
+            linea_cbte += '000000000000000'
+            #13 - Importe de percepciones o pagos a cuenta impuestos nacionales
+            linea_cbte += '000000000000000'
+            #14 - Importe de percepciones de Ingresos Brutos
+            linea_cbte += '000000000000000'
+            #15 - Importe de percepciones de impuestos municipales
+            linea_cbte += '000000000000000'
+            #16 - Importe impuestos internos
+            linea_cbte += '000000000000000'
+            #17 - Codigo de moneda
+            linea_cbte += v.codigo_moneda_segun_afip
+            #18 - Tipo de cambio
+            linea_cbte += '0001000000'
+            #19 - Cantidad alicuotas de IVA
+            linea_cbte += '1'
+            #20 - Tipo de operacion
+            linea_cbte += ' '
+            #21 - Otros tributos
+            linea_cbte += '000000000000000'
+            #22 - Fecha vencimiento de pago
+            if v.condicion_venta.id == 1:
+                fpago = v.fecha+timedelta(days=15)
+                linea_cbte += fpago.strftime("%Y%m%d")
+            else:
+                linea_cbte += v.fecha.strftime("%Y%m%d")
+            # Nueva linea_cbte
+            linea_cbte += '\r'
+            linea_cbte.encode('windows-1252')
+            a_comprobantes_v.write(linea_cbte)
+            #////////////////////////////////////
+            #FIN BLOQUE COMPROBANTES VENTAS
+            #////////////////////////////////////
+            
+            #////////////////////////////////////
+            #INICIO BLOQUE ALICUOTAS IVA VENTAS
+            #////////////////////////////////////
+            linea_alic = u''
+            #1 - Tipo de Comprobante
+            linea_alic += v.codigo_comprobante_segun_afip
+            #2 - Punto de venta
+            linea_alic += str(v.punto_venta).rjust(5,'0')
+            #3 - Numero de comprobante
+            linea_alic += str(v.numero).rjust(20,'0')
+            #4 - Importe Neto gravado
+            linea_alic += str(v.neto_2dec()).replace('.', '').rjust(15,'0')
+            #5 - Alicuota de IVA
+            linea_alic += '0005'#IVA 21%
+            #6 - Impuesto liquidado
+            linea_alic += v.iva21_2dec().replace('.', '').rjust(15,'0')
+            #Nueva linea comprobante
+            linea_alic += '\r'
+            linea_alic.encode('windows-1252')
+            a_alicuotas_v.write(linea_alic)
+            #//////////////////////////////////////
+            #FIN BLOQUE ALICUOTAS IVA VENTAS
+            #//////////////////////////////////////
+        zf.writestr('RG3685-Comprobantes-V-'+mes+'-'+ano+'.txt', a_comprobantes_v.getvalue().encode('cp1252'))
+        zf.writestr('RG3685-Alicuotas-V-'+mes+'-'+ano+'.txt', a_alicuotas_v.getvalue().encode('cp1252'))
+        a_comprobantes_v.close()#Lo quita de memoria
+        a_alicuotas_v.close()#Lo quita de memoria
+        zf.close()
+        response = HttpResponse(z.getvalue(),content_type='application/zip')
+        #response = HttpResponse(linea_cbte.encode('windows-1252'), content_type="text/plain")
+        response['Content-Disposition'] = 'attachment; filename="RG3685-'+mes+'-'+ano+'.zip"'
+        return response
+    else:
+        return HttpResponse()
+        
+def rg3685_compras(request, periodo):
+    '''
+    COMPRAS
+    '''
+    compras = Compra.objects.filter(periodo__id=periodo).order_by("fecha")
+    if compras:
+        ano=str(Periodo.objects.get(id=periodo).ano)
+        mes=str(Periodo.objects.get(id=periodo).mes)
+        #Inicializo archivos, Uso StringIO para trabajar directo en memoria.
+        z = StringIO()#Archivo zip, adentro estaran todos los txt
+        zf=ZipFile(z,'w')
+        a_comprobantes_c = StringIO()#Archivo de comprobantes de venta
+        a_alicuotas_c = StringIO()
+        for v in compras:
+            #
+            #INICIO BLOQUE COMPROBANTES VENTAS
+            #
+            linea_cbte = u''#Unicode
+            #1 - Fecha de comprobante
+            linea_cbte += v.fecha.strftime("%Y%m%d")
+            #2 - Tipo de Comprobante
+            linea_cbte += v.codigo_comprobante_segun_afip###############CREAR METODO!!!!
+            #3 - Punto de venta
+            linea_cbte += str(v.punto_venta).rjust(5,'0')
+            #4 - Numero de comprobante
+            linea_cbte += str(v.numero).rjust(20,'0')
+            #5 - Despacho de importacion
+            linea_cbte += '                '
+            #6 - Codigo de documento del comprador
+            linea_cbte += '80' if v.cliente.cuit else '96' 
+            #7 - Numero de documento del cliente
+            linea_cbte += v.proveedor.cuit.replace('-','').rjust(20,'0')
+            #8 - Apellido y nombre del comprador
+            if len(v.cliente.razon_social)>=31:
+                linea_cbte += v.cliente.razon_social[0:30]
+            else:
+                linea_cbte += v.cliente.razon_social.ljust(30,' ')
+            #9 - Importe total de la operacion
+            linea_cbte += str(v.total_2dec()).replace('.','').rjust(15,'0')
+            #10 - Total conceptos que no integran neto gravado
+            linea_cbte += '000000000000000'
+            #11 - Importe de operaciones exentas
+            linea_cbte += '000000000000000'
+            #12 - Pagos a cuenta IVA
+            linea_cbte += '000000000000000'
+            #13 - Importe de percepciones o pagos a cuenta impuestos nacionales
+            linea_cbte += '000000000000000'
+            #14 - Importe de percepciones de Ingresos Brutos
+            linea_cbte += '000000000000000'
+            #15 - Importe de percepciones de impuestos municipales
+            linea_cbte += '000000000000000'
+            #16 - Importe impuestos internos
+            linea_cbte += '000000000000000'
+            #17 - Codigo de moneda
+            linea_cbte += v.codigo_moneda_segun_afip###############CREAR METODO!!!!
+            #18 - Tipo de cambio
+            linea_cbte += '0001000000'
+            #19 - Cantidad alicuotas de IVA
+            linea_cbte += '1'
+            #20 - Tipo de operacion
+            linea_cbte += ' '
+            #21 - Otros tributos
+            linea_cbte += '000000000000000'
+            #22 - Fecha vencimiento de pago
+            if v.condicion_venta.id == 1:
+                fpago = v.fecha+timedelta(days=15)
+                linea_cbte += fpago.strftime("%Y%m%d")
+            else:
+                linea_cbte += v.fecha.strftime("%Y%m%d")
+            # Nueva linea_cbte
+            linea_cbte += '\r'
+            linea_cbte.encode('windows-1252')
+            a_comprobantes_c.write(linea_cbte)
+            #////////////////////////////////////
+            #FIN BLOQUE COMPROBANTES VENTAS
+            #////////////////////////////////////
+            
+            #////////////////////////////////////
+            #INICIO BLOQUE ALICUOTAS IVA VENTAS
+            #////////////////////////////////////
+            linea_alic = u''
+            #1 - Tipo de Comprobante
+            linea_alic += v.codigo_comprobante_segun_afip
+            #2 - Punto de venta
+            linea_alic += str(v.punto_venta).rjust(5,'0')
+            #3 - Numero de comprobante
+            linea_alic += str(v.numero).rjust(20,'0')
+            #4 - Importe Neto gravado
+            linea_alic += str(v.neto_2dec()).replace('.', '').rjust(15,'0')
+            #5 - Alicuota de IVA
+            linea_alic += '0005'#IVA 21%
+            #6 - Impuesto liquidado
+            linea_alic += v.iva21_2dec().replace('.', '').rjust(15,'0')
+            #Nueva linea comprobante
+            linea_alic += '\r'
+            linea_alic.encode('windows-1252')
+            a_alicuotas_c.write(linea_alic)
+            #//////////////////////////////////////
+            #FIN BLOQUE ALICUOTAS IVA VENTAS
+            #//////////////////////////////////////
+        zf.writestr('RG3685-Comprobantes-V-'+mes+'-'+ano+'.txt', a_comprobantes_c.getvalue().encode('cp1252'))
+        zf.writestr('RG3685-Alicuotas-V-'+mes+'-'+ano+'.txt', a_alicuotas_c.getvalue().encode('cp1252'))
+        a_comprobantes_c.close()#Lo quita de memoria
+        a_alicuotas_c.close()#Lo quita de memoria
+        zf.close()
+        response = HttpResponse(z.getvalue(),content_type='application/zip')
+        #response = HttpResponse(linea_cbte.encode('windows-1252'), content_type="text/plain")
+        response['Content-Disposition'] = 'attachment; filename="RG3685-'+mes+'-'+ano+'.zip"'
+        return response
+    else:
+        return HttpResponse()

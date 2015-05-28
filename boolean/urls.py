@@ -14,7 +14,8 @@ from boolean_app.views import Home, ClientesList, ClientesNuevo,\
     comp_saldo, compra_new, comprasList, chequesList, subdiario_iva_compras,\
     orden_pago_new, get_num_prox_orden_pago, get_facturas_pendiente_pago_prov,\
     PagosList, imprimirOrdenPago, recibo_contado, orden_pago_contado_new,\
-    proveedores_resumen_cuenta, proveedores_comp_saldo
+    proveedores_resumen_cuenta, proveedores_comp_saldo, rg3685_ventas,\
+    rg3685_compras
 from django.contrib.auth.views import login
 from django.contrib.auth.decorators import login_required
 from boolean_app.api import articulo_datatables_view, comp_datatables_view,\
@@ -105,7 +106,9 @@ cobrosPattern = patterns('',
 
 informesPattern = patterns('',
     url(r'iva_ventas$', login_required(iva_periodo_fecha), name='subdiarioIVAVentas'),
+    url(r'exportar_3685_ventas/(?P<periodo>\d+)$', login_required(rg3685_ventas), name='AFIP3685Ventas'),
     url(r'iva_compras$', login_required(subdiario_iva_compras), name='subdiarioIVACompras'),
+    url(r'exportar_3685_compras/(?P<periodo>\d+)$', login_required(rg3685_compras), name='AFIP3685Compras'),
     url(r'ventas_totales$', login_required(ventas_totales_fecha), name='informeVentasTotales'),
     url(r'resumen_cuenta$', login_required(resumen_cuenta), name='informeResumenCuenta'),
     url(r'composicion_saldo$', login_required(comp_saldo), name='informeComposicionSaldo'),
