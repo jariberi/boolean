@@ -836,6 +836,29 @@ class Compra(models.Model):
             resto -= pago.monto
         return resto
     
+    '''
+    @return: [String] Codigo segun tabla comprobantes AFIP
+    '''
+    @property
+    def codigo_comprobante_segun_afip(self):
+        if self.tipo=="FAA":
+            return "001"
+        elif self.tipo=="FAB":
+            return "006"
+        elif self.tipo=="NCA":
+            return "003"
+        elif self.tipo=="NCB":
+            return "008"
+        elif self.tipo=="NDA":
+            return "005"
+        elif self.tipo=="NDB":
+            return "007"
+        
+    @property
+    def codigo_moneda_segun_afip(self):
+        #Devuelve $ (pesos argentinos)
+        return 'PES'
+    
 class Detalle_compra(models.Model):
     IVA_CHOICES=(
                  (0,"No Aplica"),
