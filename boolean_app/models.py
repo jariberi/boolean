@@ -853,6 +853,12 @@ class Compra(models.Model):
             return "005"
         elif self.tipo=="NDB":
             return "007"
+        elif self.tipo=="FAC":
+            return "011"
+        elif self.tipo=="NDC":
+            return "012"
+        elif self.tipo=="NCC":
+            return "013"
         
     @property
     def codigo_moneda_segun_afip(self):
