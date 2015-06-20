@@ -1963,32 +1963,40 @@ def rg3685_compras(request, periodo):
                 linea_cbte += v.proveedor.razon_social.ljust(30,' ')
             #9 - Importe total de la operacion
             if v.total >=0:
-                linea_cbte += str(round(v.total,2)).replace('.','').replace('-','').rjust(15,'0')
+                tot = "%.2f" %v.total
+                linea_cbte += tot.replace('.','').replace('-','').rjust(15,'0')
             else:
-                linea_cbte += '-'+str(round(v.total,2)).replace('.','').replace('-','').rjust(14,'0')
+                tot = "%.2f" %v.total
+                linea_cbte += '-'+tot.replace('.','').replace('-','').rjust(14,'0')
             #10 - Total conceptos que no integran neto gravado
             linea_cbte += '000000000000000'
             #11 - Importe de operaciones exentas
             if v.exento >=0:
-                linea_cbte += str(round(v.exento,2)).replace('.','').replace('-','').rjust(15,'0')
+                ex="%.2f" %v.exento
+                linea_cbte += ex.replace('.','').replace('-','').rjust(15,'0')
             else:
-                linea_cbte += '-'+str(round(v.exento,2)).replace('.','').replace('-','').rjust(14,'0')
+                ex="%.2f" %v.exento
+                linea_cbte += '-'+ex.replace('.','').replace('-','').rjust(14,'0')
             #12 - Pagos a cuenta IVA
             linea_cbte += '000000000000000'
             #13 - Importe de percepciones o pagos a cuenta impuestos nacionales
             linea_cbte += '000000000000000'
             #14 - Importe de percepciones de Ingresos Brutos
             if v.ingresos_brutos >=0:
-                linea_cbte += str(round(v.ingresos_brutos,2)).replace('.','').replace('-','').rjust(15,'0')
+                ing="%.2f" %v.ingresos_brutos
+                linea_cbte += ing.replace('.','').replace('-','').rjust(15,'0')
             else:
-                linea_cbte += '-'+str(round(v.ingresos_brutos,2)).replace('.','').replace('-','').rjust(14,'0')
+                ing="%.2f" %v.ingresos_brutos
+                linea_cbte += '-'+ing.replace('.','').replace('-','').rjust(14,'0')
             #15 - Importe de percepciones de impuestos municipales
             linea_cbte += '000000000000000'
             #16 - Importe impuestos internos
             if v.impuesto_interno >=0:
-                linea_cbte += str(round(v.impuesto_interno,2)).replace('.','').replace('-','').rjust(15,'0')
+                imp="%.2f" %v.impuesto_interno
+                linea_cbte += imp.replace('.','').replace('-','').rjust(15,'0')
             else:
-                linea_cbte += '-'+str(round(v.impuesto_interno,2)).replace('.','').replace('-','').rjust(14,'0')
+                imp="%.2f" %v.impuesto_interno
+                linea_cbte += '-'+imp.replace('.','').replace('-','').rjust(14,'0')
             #17 - Codigo de moneda
             linea_cbte += v.codigo_moneda_segun_afip
             #18 - Tipo de cambio
@@ -2004,12 +2012,14 @@ def rg3685_compras(request, periodo):
                         alics.append(det.iva)
                 linea_cbte += str(len(alics))
             #20 - Tipo de operacion
-            linea_cbte += '0'
+            linea_cbte += 'N'
             #21 - Credito fiscal computable
             if v.iva >=0:
-                linea_cbte += str(round(v.iva,2)).replace('.','').replace('-','').rjust(15,'0')
+                iva="%.2f" %v.iva
+                linea_cbte += iva.replace('.','').replace('-','').rjust(15,'0')
             else:
-                linea_cbte += '-'+str(round(v.iva,2)).replace('.','').replace('-','').rjust(14,'0')
+                iva="%.2f" %v.iva
+                linea_cbte += '-'+iva.replace('.','').replace('-','').rjust(14,'0')
             #22 - Otros tributos
             linea_cbte += '000000000000000'
             #23 - CUIT emisor/corredor
@@ -2040,39 +2050,72 @@ def rg3685_compras(request, periodo):
             linea_altalic += '80' if v.proveedor.cuit else '96'
             #5 - Numero de documento del vendedor
             linea_altalic += v.proveedor.cuit.replace('-','').rjust(20,'0')
+            neto_0=0
+            neto_21=0
+            neto_105=0
+            neto_27=0
+            for det in v.detalle_compra_set.all():
+                if det.iva == 0:
+                    neto_0+=det.cantidad*det.precio_unitario
+                elif det.iva==21:
+                    neto_21+=det.cantidad*det.precio_unitario
+                elif det.iva==10.5:
+                    neto_105+=det.cantidad*det.precio_unitario
+                elif det.iva==27:
+                    neto_27+=det.cantidad*det.precio_unitario
+            if neto_0!=0:
+                linea_alic = linea_altalic
+                #4 - Importe Neto gravado
+                ne="%.2f" %neto_0
+                linea_alic += ne.replace('.','').rjust(15,'0') if neto_0 >=0 else '-'+ne.replace('.','').replace('-','').rjust(14,'0')
+                #6 - Alicuota de IVA
+                linea_alic += '0003'#IVA 21%
+                #7 - Impuesto liquidado
+                iv0="0"
+                linea_alic += iv0.replace('.','').rjust(15,'0') if iv0 >=0 else '-'+iv0.replace('.','').replace('-','').rjust(14,'0')
+                linea_alic += '\r'
+                linea_alic.encode('windows-1252')
+                a_alicuotas_c.write(linea_alic)
             if v.iva21!=0:
                 linea_alic = linea_altalic
                 #4 - Importe Neto gravado
-                linea_alic += str(round(v.neto,2)).replace('.','').rjust(15,'0') if v.neto >=0 else '-'+str(round(v.neto,2)).replace('.','').replace('-','').rjust(14,'0')
+                ne="%.2f" %neto_21
+                linea_alic += ne.replace('.','').rjust(15,'0') if v.neto >=0 else '-'+ne.replace('.','').replace('-','').rjust(14,'0')
                 #6 - Alicuota de IVA
                 linea_alic += '0005'#IVA 21%
                 #7 - Impuesto liquidado
-                linea_alic += str(round(v.iva21,2)).replace('.','').rjust(15,'0') if v.iva21 >=0 else '-'+str(round(v.iva21,2)).replace('.','').replace('-','').rjust(14,'0')
+                iv21="%.2f" %v.iva21
+                linea_alic += iv21.replace('.','').rjust(15,'0') if v.iva21 >=0 else '-'+iv21.replace('.','').replace('-','').rjust(14,'0')
                 linea_alic += '\r'
                 linea_alic.encode('windows-1252')
                 a_alicuotas_c.write(linea_alic)
             if v.iva105!=0:
                 linea_alic = linea_altalic
                 #4 - Importe Neto gravado
-                linea_alic += str(round(v.neto,2)).replace('.','').rjust(15,'0') if v.neto >=0 else '-'+str(round(v.neto,2)).replace('.','').replace('-','').rjust(14,'0')
+                ne="%.2f" %neto_105
+                linea_alic += ne.replace('.','').rjust(15,'0') if v.neto >=0 else '-'+ne.replace('.','').replace('-','').rjust(14,'0')
                 #6 - Alicuota de IVA
                 linea_alic += '0004'#IVA 10,5%
                 #7 - Impuesto liquidado
-                linea_alic += str(round(v.iva105,2)).replace('.','').rjust(15,'0') if v.iva105 >=0 else '-'+str(round(v.iva105,2)).replace('.','').replace('-','').rjust(14,'0')
+                iv105="%.2f" %v.iva105
+                linea_alic += iv105.replace('.','').rjust(15,'0') if v.iva105 >=0 else '-'+iv105.replace('.','').replace('-','').rjust(14,'0')
                 linea_alic += '\r'
                 linea_alic.encode('windows-1252')
                 a_alicuotas_c.write(linea_alic)
             if v.iva27!=0:
                 linea_alic = linea_altalic
                 #4 - Importe Neto gravado
-                linea_alic += str(round(v.neto,2)).replace('.','').rjust(15,'0') if v.neto >=0 else '-'+str(round(v.neto,2)).replace('.','').replace('-','').rjust(14,'0')
+                ne="%.2f" %neto_27
+                linea_alic += ne.replace('.','').rjust(15,'0') if v.neto >=0 else '-'+ne.replace('.','').replace('-','').rjust(14,'0')
                 #6 - Alicuota de IVA
                 linea_alic += '0006'#IVA 27%
                 #7 - Impuesto liquidado
-                linea_alic += str(round(v.iva27,2)).replace('.','').rjust(15,'0') if v.iva27 >=0 else '-'+str(round(v.iva27,2)).replace('.','').replace('-','').rjust(14,'0')
+                iv27="%.2f" %v.iva27
+                linea_alic += iv27.replace('.','').rjust(15,'0') if v.iva27 >=0 else '-'+iv27.replace('.','').replace('-','').rjust(14,'0')
                 linea_alic += '\r'
                 linea_alic.encode('windows-1252')
                 a_alicuotas_c.write(linea_alic)
+            
             #//////////////////////////////////////
             #FIN BLOQUE ALICUOTAS IVA VENTAS
             #//////////////////////////////////////
