@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 # Create your views here.
+import collections
 from django.views.generic.base import TemplateView
 from django.views.generic.list import ListView
 from boolean_app.models import Bancos, Condicion_venta, Articulo, Linea,\
@@ -40,8 +41,8 @@ from django.db.models.aggregates import Sum
 from boolean_app.utils import get_num_recibo, get_num_orden_pago
 from django.db.models import Q
 from operator import itemgetter
-from afip_ws.wsaa import obtener_o_crear_permiso
-from afip_ws.wsfev1 import WSFEV1
+#from afip_ws.wsaa import obtener_o_crear_permiso
+#from afip_ws.wsfev1 import WSFEV1
 from StringIO import StringIO
 import json
 from zipfile import ZipFile
@@ -49,8 +50,10 @@ import tempfile
 import os
 import platform
 import codecs
+import logging
 #from django.core.files.temp import TemporaryFile
 
+logger = logging.getLogger(__name__)
 
 class Home(TemplateView):
     template_name = "home.html"
@@ -245,88 +248,128 @@ def facturar(request):
     DetalleArticuloCompuestoFormset = formset_factory(DetalleArticulosCompuestosForm)
     DetalleFormSet = formset_factory(DetalleVentaForm, formset=RequiredFormSet, extra=0)
     if request.method == 'POST': # If the form has been submitted...
+        logger.debug("Recibido POST request")
         #Paso todos los campos en POST de cantidad que esten en tiempo a decimal
+        logger.debug("Se copia los datos del POST para poder trabajarlos")
         CPOST = request.POST.copy()
+        logger.debug("Mapeando tiempos a cantidades")
         for k,v in CPOST.iteritems():
             if "cantidad" in k and ":" in v:
                 entero = int(CPOST[k].split(":")[0])
                 decimal = float(CPOST[k].split(":")[1])/60
                 decimal = Decimal("%.3f" %decimal)
                 CPOST[k]="%s" %(entero+decimal)
+        logger.debug("Creando formularios con los datos POST")
         articuloCompuestoFormset = DetalleArticuloCompuestoFormset(CPOST, prefix = 'art_comp')
         facturaForm = FacturaForm(CPOST) # A form bound to the POST data
         # Create a formset from the submitted data
         detalleFormset = DetalleFormSet(CPOST, prefix = 'det_venta')
+        if not facturaForm.is_valid():
+            logger.error("Error en facturaForm")
+        if not articuloCompuestoFormset.is_valid():
+            logger.error("Error en articuloCompuestoFormset")
+        if not detalleFormset.is_valid():
+            logger.error("Error en detalleFormset")
         if facturaForm.is_valid() and detalleFormset.is_valid() and articuloCompuestoFormset.is_valid():
+            logger.debug("Los datos del POST son correctos")
+            logger.debug("Creando nueva factura...")
             factura = facturaForm.save(commit=False)
             periodo=Periodo.objects.filter(mes=factura.fecha.month,ano=factura.fecha.year)[0]
+            logger.debug("Creada nueva factura. No fue guardada en la BD.Tipo factura: %s -- Periodo: %s" %(factura.tipo,periodo)) 
             factura.periodo=periodo
             #set_trace()
+            logger.debug("Guardando factura incompleta en BD.")
             factura.save()
             subtotal = 0
-            for form in detalleFormset.forms:
+            logger.debug("Calculando valores de la factura: Neto, Iva, Total, Saldo. \
+                          Sobre una cantidad de %s item/s" %len(detalleFormset.forms))
+            for k, form in detalleFormset.forms.iteritems():
+                logger.debug("Procesando item nro %s" %k)
                 detalleItem = form.save(commit=False)
                 if factura.tipo.endswith('A'):
                     sub = detalleItem.cantidad * detalleItem.precio_unitario
                     subtotal += sub - (sub*detalleItem.descuento/Decimal(100))
+                    logger.debug("Descuento: %s -- Subtotal: %s -- Subtotal con descuento: %s" %(detalleItem.descuento,sub,sub - (sub*detalleItem.descuento/Decimal(100))))
                 elif factura.tipo.endswith('B'):    
                     sub= detalleItem.cantidad * (detalleItem.precio_unitario/Decimal(1.21))
                     subtotal += sub - (sub*detalleItem.descuento/Decimal(100))
+                    logger.debug("Descuento: %s -- Subtotal: %s -- Subtotal con descuento: %s" %(detalleItem.descuento,sub,sub - (sub*detalleItem.descuento/Decimal(100))))
             factura.subtotal = subtotal
             factura.neto = subtotal - (subtotal*factura.descuento/Decimal(100))
             factura.iva21 = factura.neto * Decimal("0.21")
             factura.iva105 = 0
             factura.total = factura.saldo = factura.neto + factura.iva21
+            logger.debug("""Valores calculados:
+                            Subtotal: %s
+                            Descuento: %s
+                            Neto: %s
+                            Iva 21: %s
+                            Iva 105: %s
+                            Total: %s""" \
+                            %(factura.subtotal, factura.descuento, factura.neto, factura.iva21, factura.iva105, factura.total))
+            logger.debug("Guardando factura......")
             factura.save()
+            logger.debug("Guardando factura......OK")
             #set_trace()
+            logger.debug("---Comenzando actualizacion de saldos---")
             if factura.tipo.startswith("FA") or factura.tipo.startswith("ND"):
-                print "ESTO ES:  %s" %factura.tipo
-                print "SALDO DEL CLIENTE: %s" %factura.cliente.saldo
+                logger.debug("Saldo anterior del cliente: %s" %factura.cliente.saldo) 
+                logger.debug("Saldo del comprobante: %s" %factura.saldo)
                 saldo_temp = factura.saldo
                 if factura.cliente.saldo < 0:#Esto significa que hay NC con saldos a descontar
-                    otros_comp=Venta.objects.filter(Q(cliente=factura.cliente), Q(tipo__startswith="NC"), ~Q(saldo=0)).order_by('fecha','numero')
-                    #print "Otros comprob:  " %otros_comp
+                    logger.debug("El saldo del cliente es negativo, deben haber NC con saldos pendientes") 
+                    logger.debug("Buscando NC's......")
+                    otros_comp=Venta.objects.filter(Q(cliente=factura.cliente), Q(tipo__startswith="NC"), ~Q(saldo=0)).order_by('fecha','numero')    
                     if otros_comp:
-                        for comp in otros_comp:
+                        logger.debug("Encontradas %s NC's." %len(otros_comp))
+                        for k, comp in otros_comp.iteritems():
+                            logger.debug("Procesando factura %s. Saldo factura: %s -- Saldo comprobante actual: %s" %(k, factura.saldo, comp.saldo))
                             if factura.saldo == 0:
+                                logger.debug("El saldo de la factura es 0, saliendo del proceso.")
                                 break
                             if factura.saldo >= comp.saldo:
+                                logger.debug("Saldo factura > Saldo comprobante encontrado")
                                 factura.saldo -= comp.saldo
                                 comp.saldo = 0
                                 comp.save()
                             else:
+                                logger.debug("Saldo factura < Saldo comprobante encontrado")
                                 comp.saldo -= factura.saldo
                                 factura.saldo = 0
                                 comp.save()
+                    else:
+                        logger.debug("El saldo es negativo, sin embargo no se encontraron NC's")
                 factura.save()
                 factura.cliente.saldo += saldo_temp
                 factura.cliente.save()
             if factura.tipo.startswith("NC"):
-                print "ESTO ES:  %s" %factura.tipo
+                logger.debug("El comprobante ingresado es una NC")
                 saldo_temp = factura.saldo
                 factura.pagado=True
                 if factura.comprobante_relacionado.total-Decimal('0.009') < factura.total < factura.comprobante_relacionado.total+Decimal('0.009'):
                     factura.comprobante_relacionado.pagado = True
+                    logger.debug("Cancelo factura asociada")
                     factura.comprobante_relacionado.save()
                 #Resto de los saldos de otros comprobantes
-                print factura.cliente.saldo
-                print factura.cliente.saldo > 0
                 if factura.cliente.saldo > 0:#Esto significa que hay FA o ND con saldos a descontar
-                    print "SI HAY SALDO"
+                    logger.debug("El saldo del cliente es positivo, deben haber FA con saldos pendientes") 
+                    logger.debug("Buscando FA's......")
                     otros_comp=Venta.objects.filter(Q(cliente=factura.cliente), Q(tipo__startswith="FA") | Q(tipo__startswith="ND"), ~Q(saldo=0)).order_by('fecha','numero')
-                    print otros_comp
                     if otros_comp:
-                        for comp in otros_comp:
-                            print "COMP %s" %comp.numero
+                        logger.debug("Encontradas %s NC's." %len(otros_comp))
+                        for k, comp in otros_comp.iteritems():
+                            logger.debug("Procesando factura %s. Saldo factura: %s -- Saldo comprobante actual: %s" %(k, factura.saldo, comp.saldo))
                             if factura.saldo == 0:
+                                logger.debug("Saldo =0, saliendo")
                                 break
                             if factura.saldo >= comp.saldo:
-                                print "SIIIIIII"
+                                logger.debug("Saldo factura >= Saldo comprobante encontrado")
                                 factura.saldo -= comp.saldo
                                 comp.saldo = 0
                                 comp.pagado = True
                                 comp.save()
                             else:
+                                logger.debug("Saldo factura < Saldo comprobante encontrado")
                                 comp.saldo -= factura.saldo
                                 factura.saldo = 0
                                 comp.save()
@@ -360,6 +403,7 @@ def facturar(request):
             return HttpResponseRedirect(reverse_lazy('listarPendientes'))
             
     else:
+        logger.debug("Recibido GET request")
         facturaForm = FacturaForm()
         detalleFormset = DetalleFormSet(initial=[{'descuento':'0.00',}], prefix = 'det_venta')
         articuloCompuestoFormset = DetalleArticuloCompuestoFormset(prefix = 'art_comp')
@@ -1095,6 +1139,134 @@ def ventas_totales_fecha(request):
 
     return render_to_response('informes/ventas_totales.html', c)
 
+
+def ventas_totales_a_b_fecha(request):
+    lineas_neto = {}
+    lineas_iva = {}
+    lineas_total = {}
+    if request.method == 'POST':
+        ventastab = VentasTotalesForm(request.POST)
+        if ventastab.is_valid():
+            fd = ventastab.cleaned_data['fecha_desde']
+            fh = ventastab.cleaned_data['fecha_hasta']
+            response = HttpResponse(mimetype='application/pdf')
+            if fh and fd:
+                lineas = Linea.objects.all()
+                for linea in lineas:
+                    lineas_neto[linea.nombre+' - Comp A']=0
+                    lineas_neto[linea.nombre+' - Comp B']=0
+                    lineas_iva[linea.nombre+' - Comp A']=0
+                    lineas_iva[linea.nombre+' - Comp B']=0
+                    lineas_total[linea.nombre+' - Comp A']=0
+                    lineas_total[linea.nombre+' - Comp B']=0
+                print lineas_neto
+                detalle_venta = Detalle_venta.objects.filter(venta__fecha__range=(fd, fh))
+                print "CANTIDAD DE DETALLES DE VENTA: %s" %len(detalle_venta)
+                for detalle in detalle_venta:
+                    desc=detalle.venta.descuento/100
+                    if detalle.tipo_articulo == 'AA':
+                        if detalle.articulo is not None:
+                            if detalle.venta.tipo.startswith("NC"):
+                                if detalle.venta.tipo.endswith("A"):
+                                    lineas_neto[detalle.articulo.linea.nombre+' - Comp A'] -= detalle.total_con_descuento_factura
+                                    lineas_iva[detalle.articulo.linea.nombre+' - Comp A'] -= detalle.iva_con_descuento_factura
+                                elif detalle.venta.tipo.endswith('B'):
+                                    lineas_neto[detalle.articulo.linea.nombre+' - Comp B'] -= detalle.total_con_descuento_factura
+                                    lineas_iva[detalle.articulo.linea.nombre+' - Comp B'] -= detalle.iva_con_descuento_factura
+                            else:
+                                if detalle.venta.tipo.endswith("A"):
+                                    lineas_neto[detalle.articulo.linea.nombre+' - Comp A'] += detalle.total_con_descuento_factura
+                                    lineas_iva[detalle.articulo.linea.nombre+' - Comp A'] += detalle.iva_con_descuento_factura
+                                elif detalle.venta.tipo.endswith('B'):
+                                    lineas_neto[detalle.articulo.linea.nombre+' - Comp B'] += detalle.total_con_descuento_factura
+                                    lineas_iva[detalle.articulo.linea.nombre+' - Comp B'] += detalle.iva_con_descuento_factura
+                    elif detalle.tipo_articulo == 'AP':
+                        if detalle.linea_articulo_personalizado is not None:
+                            if detalle.venta.tipo.startswith("NC"):
+                                if detalle.venta.tipo.endswith('A'):
+                                    lineas_neto[detalle.linea_articulo_personalizado.nombre+' - Comp A'] -= detalle.total_con_descuento_factura
+                                    lineas_iva[detalle.linea_articulo_personalizado.nombre+' - Comp A'] -= detalle.iva_con_descuento_factura
+                                elif detalle.venta.tipo.endswith('B'):
+                                    lineas_neto[detalle.linea_articulo_personalizado.nombre+' - Comp B'] -= detalle.total_con_descuento_factura
+                                    lineas_iva[detalle.linea_articulo_personalizado.nombre+' - Comp B'] -= detalle.iva_con_descuento_factura
+                            else:
+                                if detalle.venta.tipo.endswith('A'):
+                                    lineas_neto[detalle.linea_articulo_personalizado.nombre+' - Comp A'] += detalle.total_con_descuento_factura
+                                    lineas_iva[detalle.linea_articulo_personalizado.nombre+' - Comp A'] += detalle.iva_con_descuento_factura
+                                elif detalle.venta.tipo.endswith('B'):
+                                    lineas_neto[detalle.linea_articulo_personalizado.nombre+' - Comp B'] += detalle.total_con_descuento_factura
+                                    lineas_iva[detalle.linea_articulo_personalizado.nombre+' - Comp B'] += detalle.iva_con_descuento_factura
+                    else:
+                        if detalle.venta.tipo.startswith("NC"):
+                            if detalle.venta.tipo.endswith('A'):
+                                lineas_neto[u'Prestación de Servicios - Comp A'] -= detalle.total_con_descuento_factura
+                                lineas_iva[u'Prestación de Servicios - Comp A'] -= detalle.iva_con_descuento_factura
+                            elif detalle.venta.tipo.endswith('B'):
+                                lineas_neto[u'Prestación de Servicios - Comp B'] -= detalle.total_con_descuento_factura
+                                lineas_iva[u'Prestación de Servicios - Comp B'] -= detalle.iva_con_descuento_factura
+                        else:
+                            if detalle.venta.tipo.endswith('A'):
+                                lineas_neto[u'Prestación de Servicios - Comp A'] += detalle.total_con_descuento_factura
+                                lineas_iva[u'Prestación de Servicios - Comp A'] += detalle.iva_con_descuento_factura
+                            elif detalle.venta.tipo.endswith('B'):
+                                lineas_neto[u'Prestación de Servicios - Comp B'] += detalle.total_con_descuento_factura
+                                lineas_iva[u'Prestación de Servicios - Comp B'] += detalle.iva_con_descuento_factura
+                #Ordeno Diccionario
+                odneto = collections.OrderedDict(sorted(lineas_neto.items()))
+                odiva = collections.OrderedDict(sorted(lineas_iva.items()))
+                #//////////VENTAS TOTALES//////////////
+                response['Content-Disposition'] = 'filename="ventas_totales_a_b.pdf"'
+                p = Canvas(response, pagesize=A4)
+                p.setFont('Helvetica', 11)
+                p.drawString(19*cm, 28.2*cm, datetime.today().strftime("%d/%m/%Y"))
+                p.setFont('Helvetica-Bold', 15)
+                p.drawString(2*cm, 27.5*cm, RAZON_SOCIAL_EMPRESA)
+                p.drawString(7*cm, 26.2*cm, "VENTAS TOTALES")
+                p.drawString(6*cm, 25.5*cm, "Desde %s hasta %s" %(datetime.strftime(fd,"%d/%m/%Y"),datetime.strftime(fh,"%d/%m/%Y")))
+                p.line(0, 24.8*cm, 21*cm, 24.8*cm)
+                p.setFont('Helvetica-Bold', 14)
+                p.drawString(3*cm, 24.2*cm, "Linea")
+                p.drawString(11*cm, 24.2*cm, "Neto")
+                p.drawString(15*cm, 24.2*cm, "IVA")
+                p.drawString(17.5*cm, 24.2*cm, "Total")
+                p.line(0, 24*cm, 21*cm, 24*cm)
+                inicio_y = 22
+                alto_item = 0.7
+                i=0
+                for it in odneto:
+                    p.setFont('Helvetica', 12)
+                    p.drawString(2.8*cm, (inicio_y-alto_item*i)*cm, it)
+                    p.drawString(11*cm, (inicio_y-alto_item*i)*cm, "%.2f" % odneto[it])
+                    p.drawString(15*cm, (inicio_y-alto_item*i)*cm, "%.2f" % odiva[it])
+                    p.drawString(17.5*cm, (inicio_y-alto_item*i)*cm, "%.2f" % (odneto[it]+odiva[it]))
+                    i += 1
+                total_neto = 0
+                for v in lineas_neto.values():
+                    total_neto = total_neto+v
+                total_iva=0
+                for v in lineas_iva.values():
+                    total_iva = total_iva+v
+                p.setFont('Helvetica-Bold', 12)
+                p.drawString(2.8*cm, ((inicio_y-alto_item*i)-0.5)*cm, "TOTAL")
+                p.drawString(11*cm, ((inicio_y-alto_item*i)-0.5)*cm, "%.2f" % total_neto)
+                p.drawString(15*cm, ((inicio_y-alto_item*i)-0.5)*cm, "%.2f" % total_iva)
+                p.drawString(17.5*cm, ((inicio_y-alto_item*i)-0.5)*cm, "%.2f" % (total_neto+total_iva))
+                p.showPage()
+                p.save()
+                return response
+    else:
+        ventastab = VentasTotalesForm()
+
+    # For CSRF protection
+    # See http://docs.djangoproject.com/en/dev/ref/contrib/csrf/
+    c = {'ventastab': ventastab,
+        }
+    c.update(csrf(request))
+
+    return render_to_response('informes/ventas_totales_a_b.html', c)
+
+
+
 def resumen_cuenta(request):
     if request.method == 'POST':
         resumen = ResumenCuentaForm(request.POST)
@@ -1457,6 +1629,7 @@ def orden_pago_new(request):
                                 cheque3.pendiente_para_orden_pago=valor.cleaned_data['monto']-total_comprobantes
                                 cheque3.en_cartera=False
                                 cheque3.orden_pago=orden_pago
+                                cheque3.observaciones = "Entregado a %s, en orden de pago %s" %(orden_pago.proveedor, orden_pago.numero)
                                 cheque3.save()
                             elif valor.cleaned_data['tipo']=="CHP":
                                 ChequePropio.objects.create(orden_pago=orden_pago,\
@@ -1474,6 +1647,7 @@ def orden_pago_new(request):
                                 cheque3.pendiente_para_orden_pago=valor.cleaned_data['monto']-total_comprobantes
                                 cheque3.en_cartera=False
                                 cheque3.orden_pago=orden_pago
+                                cheque3.observaciones = "Entregado a %s, en orden de pago %s" %(orden_pago.proveedor, orden_pago.numero)
                                 cheque3.save()
                             elif valor.cleaned_data['tipo']=="CHP":
                                 ChequePropio.objects.create(orden_pago=orden_pago,\
@@ -1562,6 +1736,7 @@ def orden_pago_contado_new(request, compra):
                             cheque3.pendiente_para_orden_pago=0
                             cheque3.en_cartera=False
                             cheque3.orden_pago=orden_pago
+                            cheque3.observaciones = "Entregado a %s, en orden de pago %s" %(orden_pago.proveedor, orden_pago.numero)
                             cheque3.save()
                         elif valor.cleaned_data['tipo']=='CHP':
                             ChequePropio.objects.create(orden_pago=orden_pago,\
@@ -1608,6 +1783,7 @@ def orden_pago_contado_new(request, compra):
                                 cheque3.pendiente_para_orden_pago=valor.cleaned_data['monto']-total_comprobantes
                                 cheque3.en_cartera=False
                                 cheque3.orden_pago=orden_pago
+                                cheque3.observaciones = "Entregado a %s, en orden de pago %s" %(orden_pago.proveedor, orden_pago.numero)
                                 cheque3.save()
                             elif valor.cleaned_data['tipo']=="CHP":
                                 ChequePropio.objects.create(orden_pago=orden_pago,\

@@ -11,14 +11,19 @@
     	if (this.value == 'periodo'){
     		$("#fechas").hide();
     		$("#periodo").show();
+            $("#button_exportar").prop('disabled',false);
     	}
     	else if (this.value == 'fechas'){
     		$("#periodo").hide();
     		$("#fechas").show();
+            $("#button_exportar").prop('disabled',true);
     	}
     
     });
-    
+
+    $("#button_exportar").on('click',function(){
+        window.location="/informes/exportar_3685_ventas/"+$("#id_periodo").val()
+    });
     
     });
 
@@ -54,5 +59,7 @@
           <label for="id_fecha_hasta">Fecha hasta:</label>{{subdiario.fecha_hasta}}
           </div>
         </div>
-        <input value="ACEPTAR" type="submit"></form> 
+        <input value="ACEPTAR" type="submit">
+          <input id="button_exportar" value="EXPORTAR RG3485" type="button">
+      </form>
     {% endblock %}

@@ -273,6 +273,36 @@ $(document).ready(function () {
         },
         live:'submitted'
     })
+    .on('success.form.bv',function(e){
+			e.preventDefault();
+			var $form = $(e.target)
+			var punto_venta=parseInt($form.find("#id_punto_venta").val());
+			var numero=parseInt($form.find("#id_numero").val());
+            var tipo_comprobante=$form.find("#id_tipo").val();
+            var proveedor=parseInt($form.find("#id_proveedor").val());
+            $.get("/api/validar_comprobante_compra/",{'numero':numero, 'punto_venta':punto_venta, 'tipo_comprobante':tipo_comprobante, 'proveedor':proveedor}, function(data){
+                if(data){
+    				var json_val = JSON.parse(data);
+                    if(json_val){
+    					if (json_val.existe) {
+                            alert("El comprobante ingresado ya existe, verifique los datos e intente nuevamente")
+                        }
+                        else {
+                            $.ajax({
+                            data: $("form").serialize(), // get the form dat
+                            url: "/compras/nuevo",
+                            method: "POST",
+                            success: function(result){
+                                window.location.replace("{% url "nuevaCompra" %}");
+                            }
+                            });
+                        }
+    				}
+    			}
+    		})
+
+
+		})
 });
 </script> <style type="text/css">
 #cont {

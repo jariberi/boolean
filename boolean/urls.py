@@ -15,7 +15,7 @@ from boolean_app.views import Home, ClientesList, ClientesNuevo,\
     orden_pago_new, get_num_prox_orden_pago, get_facturas_pendiente_pago_prov,\
     PagosList, imprimirOrdenPago, recibo_contado, orden_pago_contado_new,\
     proveedores_resumen_cuenta, proveedores_comp_saldo, rg3685_ventas,\
-    rg3685_compras
+    rg3685_compras, ventas_totales_a_b_fecha
 from django.contrib.auth.views import login
 from django.contrib.auth.decorators import login_required
 from boolean_app.api import articulo_datatables_view, comp_datatables_view,\
@@ -23,7 +23,7 @@ from boolean_app.api import articulo_datatables_view, comp_datatables_view,\
     cliente_datatables_view, proveedores_datatables_view,\
     comp_compras_datatables_view, cheques_datatables_view,\
     cheque_quitar_de_cartera, pagos_datatables_view, get_credito_valores_op,\
-    get_datos_defecto_cheque
+    get_datos_defecto_cheque, validar_comprobante_compra
 from boolean_app.reports import impr_comprobante, impr_recibo
 
 # Uncomment the next two lines to enable the admin:
@@ -110,6 +110,7 @@ informesPattern = patterns('',
     url(r'iva_compras$', login_required(subdiario_iva_compras), name='subdiarioIVACompras'),
     url(r'exportar_3685_compras/(?P<periodo>\d+)$', login_required(rg3685_compras), name='AFIP3685Compras'),
     url(r'ventas_totales$', login_required(ventas_totales_fecha), name='informeVentasTotales'),
+    url(r'ventas_totales_a_b$', login_required(ventas_totales_a_b_fecha), name='informeVentasTotalesAB'),
     url(r'resumen_cuenta$', login_required(resumen_cuenta), name='informeResumenCuenta'),
     url(r'composicion_saldo$', login_required(comp_saldo), name='informeComposicionSaldo'),
     )
@@ -166,6 +167,8 @@ urlpatterns = patterns('',
     url(r'^api/quitar_cheque_de_cartera/$', cheque_quitar_de_cartera, name='cheque_quitar_de_cartera'),
     url(r'^api/obtener_pagos_datatables/$', pagos_datatables_view, name='pagos_datatables'),
     url(r'^api/get_datos_cheque_defecto/(?P<cliente>\d+)/$', get_datos_defecto_cheque, name='datos_def_cheque'),
+    url(r'^api/validar_comprobante_compra/$', validar_comprobante_compra, name='validar_comprobante_compra'),
+
     url(r'^cobros/', include(cobrosPattern)),
     url(r'^compras/', include(comprasPattern)),
     url(r'^pagos/', include(pagosPattern)),

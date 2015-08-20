@@ -541,8 +541,8 @@ def cheques_datatables_view(request):
             row.append(estado)
             attr_disabled=''
             #attr_disabled='' if obj.en_cartera else 'disabled'
-            class_disabled=''
-            #class_disabled='' if obj.en_cartera else ' class="disabled"'
+            #class_disabled=''
+            class_disabled='' if obj.en_cartera else ' class="disabled"'
             ops = '''<div class="btn-group">
                      <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
                      Acciones <span class="caret"></span>
@@ -715,5 +715,27 @@ def pagos_datatables_view(request):
     #serialize to json
     s = StringIO()
     json.dump(response, s)
+    s.seek(0)
+    return HttpResponse(s.read())
+
+def validar_comprobante_compra(request):
+    numero = request.GET['numero']
+    punto_venta = request.GET['punto_venta']
+    tipo = request.GET['tipo_comprobante']
+    proveedor = request.GET['proveedor']
+
+    try:
+        com = Compra.objects.get(numero=numero, punto_venta=punto_venta, tipo=tipo, proveedor__id=proveedor)
+        print com
+        if com:
+            existe = True
+        else:
+            existe = False
+    except Compra.DoesNotExist:
+        existe = False
+    print "Existe: %s" %existe
+    obj = {'existe': existe}
+    s = StringIO()
+    json.dump(obj, s)
     s.seek(0)
     return HttpResponse(s.read())
