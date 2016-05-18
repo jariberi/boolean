@@ -715,5 +715,70 @@ class OrdenPagoReport(Report):
                                                                        borders = {'top': 1})
                                                            ]),
                           )]
-    
-    
+
+
+class TotalComprasProv(Report):
+    title = 'COMPRAS TOTALES POR PROVEEDOR'
+    page_size = landscape(A4)
+
+
+    class band_page_header(ReportBand):
+        height = 4*cm
+        elements = [SystemField(expression='%(report_title)s', top=0.1*cm, left=0, width=BAND_WIDTH,
+                                style={'fontName': 'Helvetica-Bold', 'fontSize': 14, 'alignment': TA_CENTER}),
+                    Label(text="RAZON SOCIAL: %s" %RAZON_SOCIAL_EMPRESA, top=0.8*cm, width=BAND_WIDTH,
+                          style={'fontName':'Helvetica','fontSize':10}),
+                    Label(text="CUIT: %s" %CUIT, top=1.2*cm, width=BAND_WIDTH,
+                          style={'fontName':'Helvetica','fontSize':10}),
+                    Label(text="DOMICILIO COMERCIAL: %s" %DOMICILIO_COMERCIAL, top=1.5*cm, width=BAND_WIDTH,
+                          style={'fontName':'Helvetica','fontSize':10}),
+                    SystemField(expression='Fecha emisión: %(now:%d/%m/%Y)s', top=2*cm, width=8*cm),
+                    Line(left=0, top=2.7*cm, right = 29.7*cm, bottom = 2.7*cm),
+                    #Encabezado de tabla
+                    Label(text="Proveedor", top=2.9*cm, left=0, width=7.7*cm, style={'fontName':'Helvetica-Bold','fontSize':10,'alignment':TA_CENTER}),
+                    Label(text="Neto", top=2.9*cm, left=7.7*cm, width=2*cm, style={'fontName':'Helvetica-Bold','fontSize':10,'alignment':TA_CENTER}),
+                    Label(text="IVA (21%)", top=2.9*cm, left=9.7*cm, width=2*cm, style={'fontName':'Helvetica-Bold','fontSize':10,'alignment':TA_CENTER}),
+                    Label(text="IVA (10.5%)", top=2.9*cm, left=11.7*cm, width=2*cm, style={'fontName':'Helvetica-Bold','fontSize':10,'alignment':TA_CENTER}),
+                    Label(text="IVA (27%)", top=2.9*cm, left=13.7*cm, width=2*cm, style={'fontName':'Helvetica-Bold','fontSize':10,'alignment':TA_CENTER}),
+                    Label(text="Perc. IVA", top=2.9*cm, left=15.7*cm, width=2*cm, style={'fontName':'Helvetica-Bold','fontSize':10,'alignment':TA_CENTER}),
+                    Label(text="Exento", top=2.9*cm, left=17.7*cm, width=2*cm, style={'fontName':'Helvetica-Bold','fontSize':10,'alignment':TA_CENTER}),
+                    Label(text="IIBB", top=2.9*cm, left=19.7*cm, width=2*cm, style={'fontName':'Helvetica-Bold','fontSize':10,'alignment':TA_CENTER}),
+                    Label(text="Imp. Interno", top=2.9*cm, left=21.7*cm, width=2*cm, style={'fontName':'Helvetica-Bold','fontSize':10,'alignment':TA_CENTER}),
+                    Label(text="Redondeo", top=2.9*cm, left=23.7*cm, width=2*cm, style={'fontName':'Helvetica-Bold','fontSize':10,'alignment':TA_CENTER}),
+                    Label(text="Total", top=2.9*cm, left=25.7*cm, width=2*cm, style={'fontName':'Helvetica-Bold','fontSize':10,'alignment':TA_CENTER}),
+                    Line(left=0, top=3.5*cm, right = 27.7*cm, bottom = 3.5*cm),]
+
+    class band_page_footer(ReportBand):
+        height = 1*cm
+        elements=[SystemField(expression='Pagina N°: %(page_number)s', top=0.1*cm, left=0, width=BAND_WIDTH,
+                              style={'fontName':'Helvetica','fontSize':10, 'alignment':TA_CENTER}),]
+
+    class band_detail(DetailBand):
+        height = 0.4*cm
+        elements = [ObjectValue(attribute_name='proveedor', top=0, left=0, width=7.7*cm, truncate_overflow=True),
+                    ObjectValue(attribute_name='neto', top=0, left=7.7*cm, width=2*cm, get_value=lambda instance: "%.2f" %instance['neto'],style={'alignment':TA_RIGHT}),
+                    ObjectValue(attribute_name='iva21', top=0, left=9.7*cm, width=2*cm, get_value=lambda instance: "%.2f" %instance['iva21'],style={'alignment':TA_RIGHT}),
+                    ObjectValue(attribute_name='iva105', top=0, left=11.7*cm, width=2*cm, get_value=lambda instance: "%.2f" %instance['iva105'],style={'alignment':TA_RIGHT}),
+                    ObjectValue(attribute_name='iva27', top=0, left=13.7*cm, width=2*cm, get_value=lambda instance: "%.2f" %instance['iva27'],style={'alignment':TA_RIGHT}),
+                    ObjectValue(attribute_name='exento', top=0, left=15.7*cm, width=2*cm, get_value=lambda instance: "%.2f" %instance['exento'],style={'alignment':TA_RIGHT}),
+                    ObjectValue(attribute_name='piva', top=0, left=17.7*cm, width=2*cm, get_value=lambda instance: "%.2f" %instance['piva'],style={'alignment':TA_RIGHT}),
+                    ObjectValue(attribute_name='ingb', top=0, left=19.7*cm, width=2*cm, get_value=lambda instance: "%.2f" %instance['ingb'],style={'alignment':TA_RIGHT}),
+                    ObjectValue(attribute_name='impi', top=0, left=21.7*cm, width=2*cm, get_value=lambda instance: "%.2f" %instance['impi'],style={'alignment':TA_RIGHT}),
+                    ObjectValue(attribute_name='redondeo', top=0, left=23.7*cm, width=2*cm, get_value=lambda instance: "%.2f" %instance['redondeo'],style={'alignment':TA_RIGHT}),
+                    ObjectValue(attribute_name='total', top=0, left=25.7*cm, width=2*cm, get_value=lambda instance: "%.2f" %instance['total'],style={'alignment':TA_RIGHT}),
+                    ]
+
+    # class band_summary(ReportBand):
+    #     margin_top = 2*cm
+    #     height = 0.5*cm
+    #     elements = [
+    #         ObjectValue(attribute_name='neto', top=0.1*cm, left=12.5*cm, width=2.2*cm, action=FIELD_ACTION_SUM, get_text=lambda val: val[:-1], style={'alignment':TA_RIGHT}),
+    #         ObjectValue(attribute_name='exento', top=0.1*cm, left=14.7*cm, width=1.8*cm, action=FIELD_ACTION_SUM, style={'alignment':TA_RIGHT}),
+    #         ObjectValue(attribute_name='iva105', top=0.1*cm, left=16.5*cm,width=1.8*cm, action=FIELD_ACTION_SUM, style={'alignment':TA_RIGHT}),
+    #         ObjectValue(attribute_name='iva21', top=0.1*cm, left=18.3*cm,width=1.8*cm, action=FIELD_ACTION_SUM, style={'alignment':TA_RIGHT}),
+    #         ObjectValue(attribute_name='iva27', top=0.1*cm, left=20.1*cm,width=1.8*cm, action=FIELD_ACTION_SUM, style={'alignment':TA_RIGHT}),
+    #         ObjectValue(attribute_name='total', top=0.1*cm, left=21.9*cm, width=2.2*cm, action=FIELD_ACTION_SUM, style={'alignment':TA_RIGHT}),
+    #         ObjectValue(attribute_name='percepcion_iva', top=0.1*cm, left=24.1*cm, width=1.8*cm, action=FIELD_ACTION_SUM, style={'alignment':TA_RIGHT}),
+    #         ObjectValue(attribute_name='ingresos_brutos', top=0.1*cm, left=25.9*cm, width=1.8*cm, action=FIELD_ACTION_SUM, style={'alignment':TA_RIGHT}),
+    #         ]
+    #     borders = {'all': RoundRect(radius=4, fill_color=grey, fill=True)}

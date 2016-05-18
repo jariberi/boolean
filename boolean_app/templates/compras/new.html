@@ -293,7 +293,13 @@ $(document).ready(function () {
                             url: "/compras/nuevo",
                             method: "POST",
                             success: function(result){
-                                window.location.replace("{% url "nuevaCompra" %}");
+                                var id = JSON.parse(result).id
+                                if ($("#id_condicion_compra").val()==1){
+                                    window.location.replace('/pagos/nuevo_contado/'+id,'_blank');
+                                }
+                                else {
+                                    window.location.replace("{% url "nuevaCompra" %}");
+                                }
                             }
                             });
                         }
@@ -315,11 +321,11 @@ $(document).ready(function () {
 
 #id_punto_venta {
 	max-width: 100px;}
-}
+
 
 #id_numero {
 	max-width: 100px;}
-}
+
 
 </style>
 
@@ -391,7 +397,7 @@ $(document).ready(function () {
     						<td>{{formu.iva}}</td>
     						<td>{{formu.iva_valor}}</td>
     						<td><label class="total">0.00</label></td>
-    						<td><button class="btn btn-danger delete">Borrar</a></td>
+    						<td><a class="btn btn-danger delete">Borrar</a></td>
     					</tr>
     					{% endfor %}
     				</tbody>

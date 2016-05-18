@@ -22,7 +22,7 @@ DATABASES = {
         'PASSWORD': 'N0t3L0d1G0',#N0t3L0d1G0
         #'PASSWORD': 'torneria',
         #'HOST': '190.228.29.67',
-        'HOST': '',                      # Empty for localhost through domain sockets or '127.0.0.1' for localhost through TCP.
+        'HOST': '127.0.0.1',                      # Empty for localhost through domain sockets or '127.0.0.1' for localhost through TCP.
         'PORT': '3306',                      # Set to empty string for default.
     }
 }
@@ -207,9 +207,9 @@ CERT_FILE_PROD = "/home/jorge/Dropbox/Trabajo/Torneria Carcano/ptovta3_1_493f164
 
 #Datos de la empresa licenciada
 
-RAZON_SOCIAL_EMPRESA = "\"Torneria Carcano Agrohidráulica\" de Juan Ramón Carcano"
+RAZON_SOCIAL_EMPRESA = "\"Torneria Carcano Agrohidraulica\" de Juan Ramon Carcano"
 CUIT = "20-14944398-4"
 DOMICILIO_COMERCIAL = "Brig. Juan Manuel de Rosas 309"
 CIUDAD = "Brinkmann"
-PROVINCIA = "Córdoba"
+PROVINCIA = "Codoba"
 CODIGO_POSTAL = "X2419BVD" 

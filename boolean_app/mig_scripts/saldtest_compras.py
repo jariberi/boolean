@@ -24,6 +24,7 @@ from argparse import ArgumentParser
 from argparse import RawDescriptionHelpFormatter
 import logging
 import django
+from decimal import Decimal
 
 __all__ = []
 __version__ = 0.1
@@ -92,7 +93,7 @@ USAGE
 
         #INICIO DEL SCRIPT
         logger = logging.getLogger('saldtest')
-        hdlr = logging.FileHandler(os.path.dirname(os.path.realpath(__file__))+'/log.txt')
+        hdlr = logging.FileHandler(os.path.dirname(os.path.realpath(__file__))+'/log_compras.txt')
         formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
         hdlr.setFormatter(formatter)
         logger.addHandler(hdlr)
@@ -112,53 +113,57 @@ USAGE
         #from django.core import management
         #import boolean.settings as settings
         #management.setup_environ(settings)
-        from boolean_app.models import Cliente, Venta, Detalle_cobro, Dinero
+        from boolean_app.models import Proveedor, Compra, Detalle_compra, Dinero
         from django.db.models import Q, Sum
-        clientes=Cliente.objects.all()
-        logger.debug("Encontrados %s clientes" %len(clientes))
+        proveedores=Proveedor.objects.all()
+        logger.debug("Encontrados %s proveedores" %len(proveedores))
         i=1
-        for cli in clientes:
-            logger.debug("Cheking cliente %s: (%s) %s" %(i, cli.pk,cli.razon_social))
+        for prov in proveedores:
+            logger.debug("Cheking proveedor %s: (%s) %s" %(i, prov.pk,prov.razon_social))
             logger.debug("Calculando saldo manualmente")
-            clie = Q(cliente=cli)
+            prove = Q(proveedor=prov)
             fact = Q(tipo__startswith="FA")
             nd = Q(tipo__startswith="ND")
-            apr = Q(aprobado=True)
-            factu = Venta.objects.filter(clie, apr,  fact).aggregate(total=Sum("total"))
-            nde = Venta.objects.filter(clie, apr,  nd).aggregate(total=Sum("total"))
+            factu = sum([de.total for de in Compra.objects.filter(prove, fact)])
+            nde = sum([de.total for de in Compra.objects.filter(prove, nd)])
             nc = Q(tipo__startswith="NC")
-            ncr = Venta.objects.filter(clie, apr, nc).aggregate(total=Sum("total"))
-            recibo = Dinero.objects.filter(recibo__cliente=cli).aggregate(total=Sum("monto"))
+            ncr = sum([de.total for de in Compra.objects.filter(prove, nc)])
+            opago = Dinero.objects.filter(orden_pago__proveedor=prov).aggregate(total=Sum("monto"))
             ret=0
-            if factu['total']:
-                logger.debug("Total facturas: %s" %factu['total'])
-                ret += factu['total']
-            if nde['total']:
-                logger.debug("Total Nota Debitos: %s" %nde['total'])
-                ret += nde['total']
-            if ncr['total']:
-                logger.debug("Total Nota Creditos: %s" %ncr['total'])
-                ret -= ncr['total']
-            if recibo['total']:
-                logger.debug("Total Recibos: %s" %recibo['total'])
-                ret -= recibo['total']
+            if factu:
+                logger.debug("Total facturas: %s" %factu)
+                ret += factu
+            if nde:
+                logger.debug("Total Nota Debitos: %s" %nde)
+                ret += nde
+            if ncr:
+                logger.debug("Total Nota Creditos: %s" %ncr)
+                ret += ncr #El valor esta negativo en el comprobante
+            if opago['total']:
+                logger.debug("Total Orden Pagos: %s" %opago['total'])
+                ret -= opago['total']
             #if verbose:
             #    print ("Saldo MANUAL Cliente: %s" %ret)
-            logger.debug("Saldo MANUAL Cliente: %s" %ret)
+            logger.debug("Saldo MANUAL Proveedor: %s" %ret)
             #Busco dinero que tenga saldo a usar
-            dine = Dinero.objects.filter(pendiente_para_recibo__gt=0, recibo__cliente=cli)
+            dine = Dinero.objects.filter(pendiente_para_orden_pago__gt=0, orden_pago__proveedor=prov)
             logger.debug("Encontrado %s valor" %len(dine))
             if dine:
                 ret += dine[0].pendiente_para_recibo
             logger.debug("Saldo MANUAL+VALOR Cliente: %s" %ret)
-            if cli.saldo != ret:
-                logger.debug("Hay diferencia de saldo en el cliente: %s y deberia haber %s" % (cli.saldo,ret))
-                print ("Hay diferencia de saldo en el cliente: %s y deberia haber %s" % (cli.saldo,ret))
-                if repair:
-                    cli.saldo = ret
             #Caso 1 -> Saldo manual positivo
+            #Compruebo que haya diferencias de saldos
+            saldo_compro = Compra.objects.filter(prove,fact|nd).aggregate(total=Sum('saldo'))
+            try:
+                if Decimal('-0.009') <= ret - saldo_compro['total'] <= Decimal('0.009'):
+                    continue
+            except:
+                continue
             if ret >= 0:
-                factynd= Venta.objects.filter(clie,apr,fact|nd).order_by('-numero')
+                prove = Q(proveedor=prov)
+                fact = Q(tipo__startswith="FA")
+                nd = Q(tipo__startswith="ND")
+                factynd = Compra.objects.filter(prove,fact|nd).order_by('-fecha','-numero')
                 for f in factynd:
                     if ret == 0:
                         logger.debug("Comprobante %s deberia ser cero. Saldo: %s" %(f, f.saldo))
@@ -174,31 +179,25 @@ USAGE
                         else:
                             if repair:
                                 f.saldo=f.total
-                                f.pagado=False
                                 f.save()
                             logger.debug("Comprobante %s es ERRONEO. (%s deberia ser %s)" %(f, f.saldo, f.total))
-                            print("Comprobante %s de %s es ERRONEO. (%s deberia ser %s)" %(f, f.cliente, f.saldo, f.total))
+                            print("Comprobante %s de %s es ERRONEO. (%s deberia ser %s)" %(f, f.proveedor, f.saldo, f.total))
                     else:
                         if ret == f.saldo:
                             logger.debug("Comprobante %s es OK. Saldo: %s. Total: %s" %(f, f.saldo, f.total))
                         else:
                             logger.debug("Comprobante %s es ERRONEO. (%s deberia ser %s)" %(f,f.saldo,ret))
-                            print("Comprobante %s de %s es ERRONEO. (%s deberia ser %s)" %(f, f.cliente, f.saldo, ret))
+                            print("Comprobante %s de %s es ERRONEO. (%s deberia ser %s)" %(f, f.proveedor, f.saldo, ret))
                             if repair:
                                 f.saldo=ret
-                                f.pagado=False
                                 f.save()
                         ret = 0
             else:
-                factynd = Venta.objects.filter(clie, apr, fact | nd).order_by('-numero')
-                for f in factynd:
-                    logger.debug("Comprobante %s deberia ser cero. Saldo: %s" % (f, f.saldo))
-                    if repair:
-                        f.saldo = 0
-                        f.pagado = True
-                        f.save()
-                    continue
+                pass
             i += 1
+
+
+
         return 0
     except KeyboardInterrupt:
         ### handle keyboard interrupt ###

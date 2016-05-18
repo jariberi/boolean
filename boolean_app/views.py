@@ -20,7 +20,7 @@ from boolean_app.forms import DetalleVentaForm, FacturaForm,\
     DetalleCompraForm, ComprobanteCompraForm, DetallePagoForm, OrdenPagoForm,\
     ValoresOPForm, ValoresReciboForm, ProveedoresResumenCuentaForm,\
     ReciboContadoForm, DetalleCobroContadoForm, DetallePagoContadoForm,\
-    OrdenPagoContadoForm, ProveedoresComposicionSaldoForm
+    OrdenPagoContadoForm, ProveedoresComposicionSaldoForm, ComprasTotalesProv
 from django.core.context_processors import csrf
 from django.shortcuts import render_to_response
 from boolean.settings import PUNTO_VENTA_FAA, PUNTO_VENTA_FAB, PUNTO_VENTA_NCA,\
@@ -34,7 +34,7 @@ from reportlab.lib.units import cm
 from reportlab.lib.pagesizes import A4
 from boolean_app.reports import IVAVentas, ResumenCuenta, ComposicionSaldo,\
     IVACompras, OrdenPagoReport, ResumenCuentaProveedores,\
-    ComposicionSaldoProveedores
+    ComposicionSaldoProveedores, TotalComprasProv
 from geraldo.generators.pdf import PDFGenerator
 from django.core import serializers
 from django.db.models.aggregates import Sum
@@ -1328,7 +1328,6 @@ def resumen_cuenta(request):
                             saldo_ant-=v['haber']
                             v['saldo']=saldo_ant
                 detalle.extend(deta_comp)
-            print detalle
             resumen_cuenta = ResumenCuenta(queryset=detalle)
                 #ivav.first_page_number = fi
             resumen_cuenta.generate_by(PDFGenerator, filename=resp)
@@ -1476,12 +1475,20 @@ def compra_new(request):
                 detalleItem.compra = factura
                 detalleItem.save()
             #set_trace()
-            if factura.condicion_compra.descripcion=="Contado" and factura.tipo.startswith("FA"):
-                print "Contado"
-                return HttpResponseRedirect(reverse_lazy('nuevaOrdenPagoContado',kwargs={'compra':factura.pk}))
-            else:
-                print "NO Contado"
-                return HttpResponseRedirect(reverse_lazy('nuevaCompra'))
+            #define response
+            response = {
+                'id': factura.pk,
+            }
+
+            #serialize to json
+            s = StringIO()
+            json.dump(response, s)
+            s.seek(0)
+            return HttpResponse(s.read())
+            #if factura.condicion_compra.descripcion=="Contado" and factura.tipo.startswith("FA"):
+            #    return HttpResponseRedirect(reverse_lazy('nuevaOrdenPagoContado',kwargs={'compra':factura.pk}))
+            #else:
+            #    return HttpResponseRedirect(reverse_lazy('nuevaCompra'))
        
     else:
         facturaForm = ComprobanteCompraForm()
@@ -2306,3 +2313,49 @@ def rg3685_compras(request, periodo):
         return response
     else:
         return HttpResponse()
+
+def compras_totales_prov(request):
+    if request.method == 'POST':
+        totform = ComprasTotalesProv(request.POST)
+        if totform.is_valid():
+            ano = totform.cleaned_data['ano']
+            response = HttpResponse(mimetype='application/pdf')
+            if ano:
+                com = Proveedor.objects.filter(compra__fecha__year=ano).annotate(neto=Sum('compra__neto'),
+                                                                                 iva21=Sum('compra__iva21'),
+                                                                                 iva105=Sum('compra__iva105'),
+                                                                                 iva27=Sum('compra__iva27'),
+                                                                                 piva=Sum('compra__percepcion_iva'),
+                                                                                 exento=Sum('compra__exento'),
+                                                                                 ingb=Sum('compra__ingresos_brutos'),
+                                                                                 impi=Sum('compra__impuesto_interno'),
+                                                                                 red=Sum('compra__redondeo')
+                                                                                 ).order_by('razon_social')
+            qs = []
+            for co in com:
+                obj = {}
+                obj['proveedor']=co.razon_social
+                obj['neto']=co.neto
+                obj['iva21']=co.iva21
+                obj['iva105']=co.iva105
+                obj['iva27']=co.iva27
+                obj['piva']=co.piva
+                obj['exento']=co.exento
+                obj['ingb']=co.ingb
+                obj['impi']=co.impi
+                obj['redondeo']=co.red
+                obj['total']=co.neto+co.iva21+co.iva105+co.iva27+co.piva+co.exento+co.ingb+co.impi+co.red
+                qs.append(obj)
+            totales_compras = TotalComprasProv(queryset=qs)
+            totales_compras.generate_by(PDFGenerator, filename=response)
+            return response
+    else:
+        totform = ComprasTotalesProv()
+
+    # For CSRF protection
+    # See http://docs.djangoproject.com/en/dev/ref/contrib/csrf/
+    c = {'totform': totform,
+        }
+    c.update(csrf(request))
+
+    return render_to_response('informes/totales_prov.html', c)

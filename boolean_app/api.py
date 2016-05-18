@@ -554,10 +554,11 @@ def cheques_datatables_view(request):
             row.append(ops)
         detalle='''<u>CUIT</u>: <strong>%s</strong><br>
                    <u>Banco</u>: %s<br>
+                   <u>Entregado por</u>: %s (%s)<br>
                    <u>Paguese a</u>: %s<br>
                    <u>Domiclio de pago</u>: %s<br>
                    <u>Observaciones</u>: %s<br>'''\
-                   % ( obj.cuit_titular, obj.banco.nombre, obj.paguese_a,\
+                   % ( obj.cuit_titular, obj.banco.nombre, obj.recibo.cliente, obj.recibo.numero_full, obj.paguese_a,\
                       obj.domicilio_de_pago, obj.observaciones if obj.observaciones else "N/A")
         row.insert(0, detalle)
         if tipo =='cartera':

@@ -15,7 +15,7 @@ from boolean_app.views import Home, ClientesList, ClientesNuevo,\
     orden_pago_new, get_num_prox_orden_pago, get_facturas_pendiente_pago_prov,\
     PagosList, imprimirOrdenPago, recibo_contado, orden_pago_contado_new,\
     proveedores_resumen_cuenta, proveedores_comp_saldo, rg3685_ventas,\
-    rg3685_compras, ventas_totales_a_b_fecha
+    rg3685_compras, ventas_totales_a_b_fecha, compras_totales_prov
 from django.contrib.auth.views import login
 from django.contrib.auth.decorators import login_required
 from boolean_app.api import articulo_datatables_view, comp_datatables_view,\
@@ -113,6 +113,7 @@ informesPattern = patterns('',
     url(r'ventas_totales_a_b$', login_required(ventas_totales_a_b_fecha), name='informeVentasTotalesAB'),
     url(r'resumen_cuenta$', login_required(resumen_cuenta), name='informeResumenCuenta'),
     url(r'composicion_saldo$', login_required(comp_saldo), name='informeComposicionSaldo'),
+    url(r'compras_por_proveedor$', login_required(compras_totales_prov), name='comprasTotalesProv'),
     )
 
 comprasPattern = patterns('',

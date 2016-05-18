@@ -171,6 +171,7 @@ class Cliente(models.Model):
         factynd = Venta.objects.filter(cli, apr,  fact | nd).aggregate(total=Sum("total")) 
         nc=Q(tipo__startswith="NC")
         ncrs = Venta.objects.filter(cli, apr, nc).aggregate(total=Sum("total"))
+        #recibos = Detalle_cobro.objects.filter(recibo__cliente=self).aggregate(total=Sum("monto"))
         recibos = Detalle_cobro.objects.filter(recibo__cliente=self).aggregate(total=Sum("monto"))
         ret=0
         if factynd['total']:
@@ -191,7 +192,9 @@ class Cliente(models.Model):
         factynd = Venta.objects.filter(cli, apr, fef, fact | nd).aggregate(total=Sum("total")) 
         nc=Q(tipo__startswith="NC")
         ncrs = Venta.objects.filter(cli, apr, fef, nc).aggregate(total=Sum("total"))
-        recibos = Detalle_cobro.objects.filter(recibo__cliente=self, recibo__fecha__lte=fecha).aggregate(total=Sum("monto"))
+        #recibos = Detalle_cobro.objects.filter(recibo__cliente=self, recibo__fecha__lt=fecha).aggregate(total=Sum("monto"))
+        recibos = Dinero.objects.filter(recibo__cliente=self, recibo__fecha__lt=fecha).aggregate(total=Sum("monto"))
+        print factynd,ncrs,recibos
         ret=0
         if factynd['total']:
             ret += factynd['total']

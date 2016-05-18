@@ -526,7 +526,7 @@ $(document).ready(function () {
 			$.post($form.attr('action'), $form.serialize(), function(data){
 				console.log(data)
 				var json_val = JSON.parse(data)
-				window.open('/pagos/impr_op/'+json_val.id,'_blank')
+				window.open('/pagos/impr_op/'+json_val.id,'_blank');
 				window.location.replace('{% url "nuevaOrdenPago" %}')
 		})
 		})
