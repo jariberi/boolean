@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block container %}
+
+<form method="post">{% csrf_token %}
+    <div class="eliminar">
+    <p>Esta seguro que desea eliminar el cliente "{{ object.razon_social }}"?</p>
+    </div>
+    <input type="submit" value="Borrar" />
+    <input type="button" value="Cancelar" onclick="history.back()">
+</form>
+
+{% endblock %}

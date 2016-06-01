@@ -20,7 +20,7 @@ from boolean_app.forms import DetalleVentaForm, FacturaForm,\
     DetalleCompraForm, ComprobanteCompraForm, DetallePagoForm, OrdenPagoForm,\
     ValoresOPForm, ValoresReciboForm, ProveedoresResumenCuentaForm,\
     ReciboContadoForm, DetalleCobroContadoForm, DetallePagoContadoForm,\
-    OrdenPagoContadoForm, ProveedoresComposicionSaldoForm, ComprasTotalesProv
+    OrdenPagoContadoForm, ProveedoresComposicionSaldoForm, ComprasTotalesProv, VentasTotalesClie
 from django.core.context_processors import csrf
 from django.shortcuts import render_to_response
 from boolean.settings import PUNTO_VENTA_FAA, PUNTO_VENTA_FAB, PUNTO_VENTA_NCA,\
@@ -34,7 +34,7 @@ from reportlab.lib.units import cm
 from reportlab.lib.pagesizes import A4
 from boolean_app.reports import IVAVentas, ResumenCuenta, ComposicionSaldo,\
     IVACompras, OrdenPagoReport, ResumenCuentaProveedores,\
-    ComposicionSaldoProveedores, TotalComprasProv
+    ComposicionSaldoProveedores, TotalComprasProv, TotalVentasClie
 from geraldo.generators.pdf import PDFGenerator
 from django.core import serializers
 from django.db.models.aggregates import Sum
@@ -1508,7 +1508,10 @@ class comprasList(TemplateView):
     
 class chequesList(TemplateView):
     template_name="cheques/list.html"
-    
+
+class chequesPropiosList(TemplateView):
+    template_name="chequesPropios/list.html"
+
 def subdiario_iva_compras(request):
     if request.method == 'POST':
         subdiario = SubdiarioIVAPeriodoFecha(request.POST)
@@ -1856,7 +1859,7 @@ def imprimirOrdenPago(request,pk):
                                    'CUIT':dine.CUIT,'FECHA':dine.FECHA,'monto':round(dine.monto,2)})
     qs.append(orp)
     print qs
-    resp = HttpResponse(mimetype='application/pdf')
+    resp = HttpResponse(content_type='application/pdf')
     op=OrdenPagoReport(queryset=qs)
     op.generate_by(PDFGenerator, filename=resp)
     return resp
@@ -1870,7 +1873,7 @@ def proveedores_resumen_cuenta(request):
                 pro = resumen.cleaned_data['proveedor'] 
             fd = resumen.cleaned_data['desde']
             fh = resumen.cleaned_data['hasta']           
-            resp = HttpResponse(mimetype='application/pdf')
+            resp = HttpResponse(content_type='application/pdf')
             #detalle=[{'id':pro.id,'razon_social':pro.razon_social,'detalle_comprobantes':[]}]
             detalle=[]
             #Defino las consultas Q
@@ -2359,3 +2362,36 @@ def compras_totales_prov(request):
     c.update(csrf(request))
 
     return render_to_response('informes/totales_prov.html', c)
+
+def ventas_totales_clie(request):
+    if request.method == 'POST':
+        totform = VentasTotalesClie(request.POST)
+        if totform.is_valid():
+            inicio = totform.cleaned_data['inicio']
+            fin = totform.cleaned_data['fin']
+            if inicio and fin:
+                response = HttpResponse(content_type='application/pdf')
+                ven = Cliente.objects.filter(venta__fecha__range=(inicio, fin)).annotate(neto=Sum('venta__neto'),
+                                                                                         iva21=Sum('venta__iva21')
+                                                                                         ).order_by('razon_social')
+            qs = []
+            for ve in ven:
+                obj = {}
+                obj['cliente']=ve.razon_social
+                obj['neto']=ve.neto
+                obj['iva21']=ve.iva21
+                obj['total']=ve.neto+ve.iva21
+                qs.append(obj)
+            totales_ventas = TotalVentasClie(queryset=qs)
+            totales_ventas.generate_by(PDFGenerator, filename=response)
+            return response
+    else:
+        totform = VentasTotalesClie()
+
+    # For CSRF protection
+    # See http://docs.djangoproject.com/en/dev/ref/contrib/csrf/
+    c = {'totform': totform,
+        }
+    c.update(csrf(request))
+
+    return render_to_response('informes/totales_clie.html', c)

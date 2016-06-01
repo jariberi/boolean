@@ -296,7 +296,7 @@ def impr_recibo(request,pk):
         except Dinero.DoesNotExist:
             try:
                 item.transferenciabancariaentrante
-                p.drawString(10*cm, (inicio_y-i*alto_item)*cm, "Transferencia Bancaria")
+                p.drawString(10*cm, (inicio_y-i*alto_item)*cm, "Tr. Banc. %s en %s" % (item.transferenciabancariaentrante.numero_operacion, item.transferenciabancariaentrante.cuenta_destino.banco.nombre))
                 p.drawRightString(20*cm, (inicio_y-i*alto_item)*cm, "%.2f" %item.monto)
             except Dinero.DoesNotExist:
                 p.drawString(10*cm, (inicio_y-i*alto_item)*cm, "Efectivo" if item.monto >=0 else "Efectivo - SU VUELTO")
@@ -369,7 +369,7 @@ def impr_recibo(request,pk):
         except Dinero.DoesNotExist:
             try:
                 item.transferenciabancariaentrante
-                p.drawString(10*cm, (inicio_y-i*alto_item)*cm, "Transferencia Bancaria")
+                p.drawString(10*cm, (inicio_y-i*alto_item)*cm, "Tr. Banc. %s en %s" % (item.transferenciabancariaentrante.numero_operacion, item.transferenciabancariaentrante.cuenta_destino.banco.nombre))
                 p.drawRightString(20*cm, (inicio_y-i*alto_item)*cm, "%.2f" %item.monto)
             except Dinero.DoesNotExist:
                 p.drawString(10*cm, (inicio_y-i*alto_item)*cm, "Efectivo" if item.monto >=0 else "Efectivo - SU VUELTO")
@@ -782,3 +782,50 @@ class TotalComprasProv(Report):
     #         ObjectValue(attribute_name='ingresos_brutos', top=0.1*cm, left=25.9*cm, width=1.8*cm, action=FIELD_ACTION_SUM, style={'alignment':TA_RIGHT}),
     #         ]
     #     borders = {'all': RoundRect(radius=4, fill_color=grey, fill=True)}
+
+class TotalVentasClie(Report):
+    title = 'VENTAS TOTALES POR CLIENTE'
+    page_size = A4
+
+
+    class band_page_header(ReportBand):
+        height = 4*cm
+        elements = [SystemField(expression='%(report_title)s', top=0.1*cm, left=0, width=BAND_WIDTH,
+                                style={'fontName': 'Helvetica-Bold', 'fontSize': 14, 'alignment': TA_CENTER}),
+                    Label(text="RAZON SOCIAL: %s" %RAZON_SOCIAL_EMPRESA, top=0.8*cm, width=BAND_WIDTH,
+                          style={'fontName':'Helvetica','fontSize':10}),
+                    Label(text="CUIT: %s" %CUIT, top=1.2*cm, width=BAND_WIDTH,
+                          style={'fontName':'Helvetica','fontSize':10}),
+                    Label(text="DOMICILIO COMERCIAL: %s" %DOMICILIO_COMERCIAL, top=1.5*cm, width=BAND_WIDTH,
+                          style={'fontName':'Helvetica','fontSize':10}),
+                    SystemField(expression='Fecha emisión: %(now:%d/%m/%Y)s', top=2*cm, width=8*cm),
+                    Line(left=0, top=2.7*cm, right=19*cm, bottom=2.7*cm),
+                    #Encabezado de tabla
+                    Label(text="Cliente", top=2.9*cm, left=0, width=11*cm, style={'fontName':'Helvetica-Bold','fontSize':10,'alignment':TA_CENTER}),
+                    Label(text="Neto", top=2.9*cm, left=11*cm, width=3*cm, style={'fontName':'Helvetica-Bold','fontSize':10,'alignment':TA_CENTER}),
+                    Label(text="IVA (21%)", top=2.9*cm, left=14*cm, width=2*cm, style={'fontName':'Helvetica-Bold','fontSize':10,'alignment':TA_CENTER}),
+                    Label(text="Total", top=2.9*cm, left=16*cm, width=3*cm, style={'fontName':'Helvetica-Bold','fontSize':10,'alignment':TA_CENTER}),
+                    Line(left=0, top=3.5*cm, right=19*cm, bottom=3.5*cm)]
+
+    class band_page_footer(ReportBand):
+        height = 1*cm
+        elements=[SystemField(expression='Pagina N°: %(page_number)s', top=0.1*cm, left=0, width=BAND_WIDTH,
+                              style={'fontName':'Helvetica','fontSize':10, 'alignment':TA_CENTER}),]
+
+    class band_detail(DetailBand):
+        height = 0.4*cm
+        elements = [ObjectValue(attribute_name='cliente', top=0, left=0, width=11*cm, height=height, truncate_overflow=True),
+                    ObjectValue(attribute_name='neto', top=0, left=11*cm, width=3*cm, get_value=lambda instance: "%.2f" %instance['neto'],style={'alignment':TA_RIGHT}),
+                    ObjectValue(attribute_name='iva21', top=0, left=14*cm, width=2*cm, get_value=lambda instance: "%.2f" %instance['iva21'],style={'alignment':TA_RIGHT}),
+                    ObjectValue(attribute_name='total', top=0, left=16*cm, width=3*cm, get_value=lambda instance: "%.2f" %instance['total'],style={'alignment':TA_RIGHT}),
+                    ]
+
+    class band_summary(ReportBand):
+        height = 1.8*cm
+        elements = [
+            Line(left=0, top=0.5*cm, right=19*cm, bottom=0.8*cm),
+            ObjectValue(attribute_name='neto', top=1*cm, left=11*cm, width=3*cm, action=FIELD_ACTION_SUM, style={'alignment':TA_RIGHT}),#, get_text=lambda val: val[:-1],
+            ObjectValue(attribute_name='iva21', top=1*cm, left=14*cm, width=2*cm, action=FIELD_ACTION_SUM, style={'alignment':TA_RIGHT}),
+            ObjectValue(attribute_name='total', top=1*cm, left=16*cm, width=3*cm, action=FIELD_ACTION_SUM, style={'alignment':TA_RIGHT}),
+            ]
+

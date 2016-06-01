@@ -1,5 +1,5 @@
 from boolean_app.models import Articulo, Venta, Recibo, Detalle_cobro, Proveedor,\
-    Valores, Compra, Dinero, OrdenPago, ChequeTercero, Cliente
+    Valores, Compra, Dinero, OrdenPago, ChequeTercero, Cliente, ChequePropio
 from django.db.models import Q
 from StringIO import StringIO
 from django.http.response import HttpResponse
@@ -10,6 +10,7 @@ from decimal import Decimal
 from pdb import set_trace
 from boolean.settings import RAZON_SOCIAL_EMPRESA
 import datetime
+import re
 
 def _getattr_foreingkey(obj, attr):
     pt = attr.count('.')
@@ -46,6 +47,93 @@ def get_cantidad_tiempo_ac(ac):
             return "%.2f" %ac.cantidad
     else:
         return "%.2f" %ac.cantidad
+
+def filtering(get, dataset, data_struct, global_search):
+    """
+    :param get: Diccionario GET del request de la vista, para buscar los parametros
+    :param dataset: Dataset con la info, normalmente objects.all()
+    :param data_struct: Dictionario con la estructura de la tabla {0:'columna_a',1:'columna_b'}
+    :param global_search: En que columna debe buscar el termino global
+    :return: Dataset filtrado segun los parametros
+    """
+    # Extraccion de las busquedas indivuales
+    individual_searchs_i = {}
+    for item in get:
+        match = re.match(r'columns\[(\d+)\]\[search\]\[value\]', item)
+        if match and get[item]:
+            individual_searchs_i[int(match.group(1))] = int(get[item])
+    # Filtrado de los datos
+    search = get['search[value]']
+    queries_g = []
+    for item in global_search:
+        queries_g.append(Q(**{item + '__icontains': search}))
+    print queries_g
+    qs = reduce(lambda x, y: x | y, queries_g)
+    queries_i = []
+    for k, v in individual_searchs_i.iteritems():
+        if v == 'false':
+            queries_i.append(Q(**{data_struct[k]: False}))
+        if v == 'true':
+            queries_i.append(Q(**{data_struct[k]: True}))
+        else:
+            queries_i.append(Q(**{data_struct[k] + '__icontains': v}))
+    if individual_searchs_i:
+        qi = reduce(lambda x, y: x & y, queries_i)
+        qs = qs | qi
+    return dataset.filter(qs)
+
+
+def ordering(get, dataset, data_struct):
+    individual_orders = {}
+    for item in get:
+        match_dir = re.match(r'order\[(\d+)\]\[dir\]', item)
+        match_col = re.match(r'order\[(\d+)\]\[column\]', item)
+        if match_dir or match_col and get[item]:
+            if match_dir:
+                i = int(match_dir.group(1))
+                if i not in individual_orders:
+                    individual_orders[i] = ['', '']
+                individual_orders[i][0] = get[item]
+            if match_col:
+                i = int(match_col.group(1))
+                if i not in individual_orders:
+                    individual_orders[i] = ['', '']
+                individual_orders[i][1] = get[item]
+    dirs = {'asc': '', 'desc': '-'}
+    ordering = []
+    for k, order in individual_orders.iteritems():
+        ordering.append(dirs[order[0]] + data_struct[int(order[1])])
+    ordering = tuple(ordering)
+    return dataset.order_by(*ordering)
+
+
+def make_data(dataset, list_display, url_modif=None, url_suspen=None, url_hab=None, detalle=None):
+    """
+    :param dataset: Dataset con la info, normalmente objects.all()
+    :param list_display:
+    :return: Datos en Array
+    """
+    data = []
+    for obj in dataset:
+        row = map(lambda field: _getattr_foreingkey(obj, field), list_display)
+        if url_modif:
+            row.append('<a href="%s"><i class="material-icons">mode_edit</i></a>' % reverse(url_modif, args=[obj.pk]))
+        if url_suspen and url_hab:
+            if obj.suspendido:
+                row.append('<a href="%s"><i class="material-icons">keyboard_arrow_up</i></a>' % reverse(url_hab,
+                                                                                                        args=[obj.pk]))
+            else:
+                row.append('<a href="%s"><i class="material-icons">keyboard_arrow_down</i></a>' % reverse(url_suspen,
+                                                                                                          args=[
+                                                                                                              obj.pk]))
+        if detalle:
+            real_detail = {}
+            for field in re.findall(r'%\((\w+\(*\)*)\)s', detalle):
+                real_detail[field] = getattr(obj, field[:-2])() if field.endswith("()") else getattr(obj, field)
+            deta = detalle % real_detail
+            row.insert(0, deta)
+        data.append(row)
+    return data
 
 
 def format_det_venta(detalles_venta):
@@ -238,7 +326,8 @@ def cobros_datatables_view(request):
     cobros = Recibo.objects.all()
     #Campos directos, personalizacion mas adelante
     list_display = ['fecha', 'numero_full','cliente.razon_social','total_str']
-    list_filter = ['cliente__razon_social']
+    list_filter = ['numero', 'cliente__razon_social']
+    data_struct = {0: 'fecha', 1: 'numero', 2: 'cliente__razon_social'}
 
     # Cuenta total de articulos:
     recordsTotal = cobros.count()
@@ -250,6 +339,7 @@ def cobros_datatables_view(request):
     cobros = cobros.filter(qs)
 
     #Ordenado
+    cobros = ordering(request.GET, cobros, data_struct)
     #order = dict( enumerate(list_display) )
     #dirs = {'asc': '', 'desc': '-'}
     #ordering = dirs[request.GET['sSortDir_0']] + order[int(request.GET['iSortCol_0'])]
@@ -336,6 +426,7 @@ def get_credito_valores_op(request,proveedor):
             try:
                 #if valor.chequetercero.pendiente_para_orden_pago > 0.009:
                 if valor.pendiente_para_orden_pago > 0.009:
+                    print valor.pendiente_para_orden_pago
                     obj = {'pendiente':'%.2f' %valor.pendiente_para_orden_pago}
                     s = StringIO()
                     json.dump(obj,s)
@@ -580,6 +671,62 @@ def cheques_datatables_view(request):
     s.seek(0)
     return HttpResponse(s.read())
 
+def cheques_propios_datatables_view(request):
+    cols={1:'fecha',2:'numero',3:'cobro',4:'monto'}
+    cheques = ChequePropio.objects.all()
+    list_display = ['fecha','numero', 'cobro','monto']
+    list_filter = ['numero']
+    # Cuenta total de articulos:
+    recordsTotal = cheques.count()
+
+    #Filtrado de los articulos
+    search = request.GET['search[value]']
+    queries = [Q(**{f+'__icontains' : search}) for f in list_filter]
+    qs = reduce(lambda x, y: x|y, queries)
+    cheques = cheques.filter(qs)
+
+    #Ordenado
+    #order = dict( enumerate(list_display) )
+    dirs = {'asc': '', 'desc': '-'}
+    ordering = dirs[request.GET['order[0][dir]']] + cols[int(request.GET['order[0][column]'])]
+    cheques = cheques.order_by(ordering)
+
+    # Conteo de articulos despues dle filtrado
+    recordsFiltered = cheques.count()
+
+
+    # finally, slice according to length sent by dataTables:
+    start = int(request.GET['start'])
+    length = int(request.GET['length'])
+    cheques = cheques[ start : (start+length)]
+
+    # extract information
+    #data = [map(lambda field: _getattr_foreingkey(obj, field), list_display) for obj in objects]
+    data = []
+    for obj in cheques:
+        row=map(lambda field: _getattr_foreingkey(obj, field), list_display)
+        detalle='''<u>Paguese a</u>: %s<br>
+                   <u>Orden Pago</u>: %s<br>'''\
+                   % ( obj.paguese_a, obj.orden_pago)
+        row.insert(0, detalle)
+        data.append(row)
+
+
+    #define response
+    response = {
+        'data': data,
+        'recordsTotal': recordsTotal,
+        'recordsFiltered': recordsFiltered,
+        'draw': request.GET['draw']
+    }
+
+    #serialize to json
+    s = StringIO()
+    json.dump(response, s)
+    s.seek(0)
+    return HttpResponse(s.read())
+
+
 def comp_compras_datatables_view(request):
     cols = {0:'fecha',1:'tipo',2:'identificador',3:'proveedor__razon_social',4:'neto',\
             5:'iva',6:'total',7:'estado'}
@@ -661,7 +808,8 @@ def pagos_datatables_view(request):
     pagos = OrdenPago.objects.all()
     #Campos directos, personalizacion mas adelante
     list_display = ['fecha', 'numero_full','proveedor.razon_social','total_str']
-    list_filter = ['proveedor__razon_social']
+    list_filter = ['numero', 'proveedor__razon_social']
+    data_struct = {0: 'fecha', 1: 'numero', 2: 'proveedor__razon_social'}
 
     # Cuenta total de articulos:
     recordsTotal = pagos.count()
@@ -673,6 +821,7 @@ def pagos_datatables_view(request):
     pagos = pagos.filter(qs)
 
     #Ordenado
+    pagos = ordering(request.GET, pagos, data_struct)
     #order = dict( enumerate(list_display) )
     #dirs = {'asc': '', 'desc': '-'}
     #ordering = dirs[request.GET['sSortDir_0']] + order[int(request.GET['iSortCol_0'])]

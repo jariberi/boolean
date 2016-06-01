@@ -15,7 +15,7 @@ from boolean_app.views import Home, ClientesList, ClientesNuevo,\
     orden_pago_new, get_num_prox_orden_pago, get_facturas_pendiente_pago_prov,\
     PagosList, imprimirOrdenPago, recibo_contado, orden_pago_contado_new,\
     proveedores_resumen_cuenta, proveedores_comp_saldo, rg3685_ventas,\
-    rg3685_compras, ventas_totales_a_b_fecha, compras_totales_prov
+    rg3685_compras, ventas_totales_a_b_fecha, compras_totales_prov, chequesPropiosList, ventas_totales_clie
 from django.contrib.auth.views import login
 from django.contrib.auth.decorators import login_required
 from boolean_app.api import articulo_datatables_view, comp_datatables_view,\
@@ -23,7 +23,7 @@ from boolean_app.api import articulo_datatables_view, comp_datatables_view,\
     cliente_datatables_view, proveedores_datatables_view,\
     comp_compras_datatables_view, cheques_datatables_view,\
     cheque_quitar_de_cartera, pagos_datatables_view, get_credito_valores_op,\
-    get_datos_defecto_cheque, validar_comprobante_compra
+    get_datos_defecto_cheque, validar_comprobante_compra, cheques_propios_datatables_view
 from boolean_app.reports import impr_comprobante, impr_recibo
 
 # Uncomment the next two lines to enable the admin:
@@ -95,6 +95,7 @@ ventasPattern = patterns('',
 cobrosPattern = patterns('',
     url(r'^$', login_required(CobrosList.as_view()), name='listarCobros'),
     url(r'cheques_en_cartera$', login_required(chequesList.as_view()), name='listarChequesEnCartera'),
+    url(r'cheques_propios$', login_required(chequesPropiosList.as_view()), name='listarChequesPropios'),
     url(r'nuevo$', login_required(recibo), name='nuevoRecibo'),
     url(r'nuevo_contado/(?P<venta>\d+)$', login_required(recibo_contado), name='nuevoReciboContado'),
     url(r'impr_recibo/(?P<pk>\d+)$', login_required(impr_recibo), name='imprimirRecibo'),
@@ -114,6 +115,7 @@ informesPattern = patterns('',
     url(r'resumen_cuenta$', login_required(resumen_cuenta), name='informeResumenCuenta'),
     url(r'composicion_saldo$', login_required(comp_saldo), name='informeComposicionSaldo'),
     url(r'compras_por_proveedor$', login_required(compras_totales_prov), name='comprasTotalesProv'),
+    url(r'ventas_por_cliente$', login_required(ventas_totales_clie), name='ventasTotalesClie'),
     )
 
 comprasPattern = patterns('',
@@ -164,6 +166,7 @@ urlpatterns = patterns('',
     url(r'^api/obtener_compras_datatables/$', comp_compras_datatables_view, name='compras_datatables'),
     url(r'^api/obtener_cobros_datatables/$', cobros_datatables_view, name='cobros_datatables'),
     url(r'^api/obtener_cheques_datatables/$', cheques_datatables_view, name='cheques_datatables'),
+    url(r'^api/obtener_cheques_propios_datatables/$', cheques_propios_datatables_view, name='cheques_propios_datatables'),
     url(r'^api/obtener_comprobantes_cliente/(?P<cliente>\d+)/$', get_comprobantes_de_cliente, name='cobros_datatables'),
     url(r'^api/quitar_cheque_de_cartera/$', cheque_quitar_de_cartera, name='cheque_quitar_de_cartera'),
     url(r'^api/obtener_pagos_datatables/$', pagos_datatables_view, name='pagos_datatables'),

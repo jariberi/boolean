@@ -265,15 +265,17 @@ class Proveedor(models.Model):
     def __unicode__(self):
         return self.razon_social
     
-    def saldo_anterior(self,fecha):
+    def saldo_anterior(self, fecha):
         pro=Q(proveedor=self)
-        fef=Q(fecha__lte=fecha)
+        fef=Q(fecha__lt=fecha)
         fact = Compra.objects.filter(pro, fef)
         ret=0
         for f in fact:
+            print f.total
             ret +=f.total
-        ops = Detalle_pago.objects.filter(orden_pago__proveedor=self, orden_pago__fecha__lte=fecha).aggregate(total=Sum("monto"))
+        ops = Detalle_pago.objects.filter(orden_pago__proveedor=self, orden_pago__fecha__lt=fecha).aggregate(total=Sum("monto"))
         if ops['total']:
+            print ops['total']
             ret -= ops['total']
         return ret
     
