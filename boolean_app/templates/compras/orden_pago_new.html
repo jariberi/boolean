@@ -3,14 +3,14 @@
 {% block headExtras %}
 <link rel="stylesheet" href="//ajax.googleapis.com/ajax/libs/jqueryui/1.11.1/themes/smoothness/jquery-ui.css" />
 <link rel="stylesheet" href="{% static "css/spinner.css" %}" />
-<link rel="stylesheet" href="{% static "css/chosen.css" %}" type="text/css">
-<script src="{% static "js/chosen.jquery.js" %}" type="text/javascript"></script>
+<link rel="stylesheet" href="https://drive.google.com/uc?export=download&id=0B727IIAvoYr_Rnd5cm9Ed2V5QVU" type="text/css">
+<script src="https://drive.google.com/uc?export=download&id=0B727IIAvoYr_T1BZMVJUN3MxMHM" type="text/javascript"></script>
 <script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.11.1/jquery-ui.min.js"></script>
 <script src="{% static "js/jquery.spin.js" %}"></script>
 <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/jquery.bootstrapvalidator/0.5.2/css/bootstrapValidator.min.css"/>
 <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/jquery.bootstrapvalidator/0.5.2/js/bootstrapValidator.min.js"></script>
 <script type="text/javascript" src="http://bootstrapvalidator.com/vendor/bootstrapvalidator/js/language/es_ES.js"></script>
-<link rel="stylesheet" href="{% static "css/bootstrap-chosen.css" %}" type="text/css">
+<link rel="stylesheet" href="https://drive.google.com/uc?export=download&id=0B727IIAvoYr_NktXQjVLRE11cXM" type="text/css">
 <script src="//cdn.datatables.net/1.10.2/js/jquery.dataTables.min.js"></script>
 <link rel="stylesheet" href="//cdn.datatables.net/plug-ins/9dcbecd42ad/integration/bootstrap/3/dataTables.bootstrap.css" />
 <script src="//cdn.datatables.net/plug-ins/9dcbecd42ad/integration/bootstrap/3/dataTables.bootstrap.js"></script>
@@ -526,7 +526,7 @@ $(document).ready(function () {
 			$.post($form.attr('action'), $form.serialize(), function(data){
 				console.log(data)
 				var json_val = JSON.parse(data)
-				window.open('/pagos/impr_op/'+json_val.id,'_blank');
+				window.open('/pagos/impr_op/'+json_val.id,'_blank')
 				window.location.replace('{% url "nuevaOrdenPago" %}')
 		})
 		})
@@ -759,10 +759,12 @@ form .form-control-feedback {
         							<button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-expanded="false">% <span class="caret"></span></button>
         							<ul class="dropdown-menu dropdown-menu-right" role="menu">
           							<li><a class="descuento_fijo" href="#">5%</a></li>
+									<li><a class="descuento_fijo" href="#">7%</a></li>
           							<li><a class="descuento_fijo" href="#">10%</a></li>
           							<li><a class="descuento_fijo" href="#">15%</a></li>
           							<li><a class="descuento_fijo" href="#">20%</a></li>
           							<li><a class="descuento_fijo" href="#">25%</a></li>
+									<li><a class="descuento_fijo" href="#">31.15%</a></li>
         							</ul>
       							</div><!-- /btn-group -->
     						</div><!-- /input-group --></td>

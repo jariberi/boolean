@@ -271,12 +271,10 @@ class Proveedor(models.Model):
         fact = Compra.objects.filter(pro, fef)
         ret=0
         for f in fact:
-            print f.total
             ret +=f.total
-        ops = Detalle_pago.objects.filter(orden_pago__proveedor=self, orden_pago__fecha__lt=fecha).aggregate(total=Sum("monto"))
-        if ops['total']:
-            print ops['total']
-            ret -= ops['total']
+        ops = OrdenPago.objects.filter(proveedor=self, fecha__lt=fecha)
+        for op in ops:
+            ret -= op.total
         return ret
     
     def saldo_total(self):
@@ -775,7 +773,8 @@ class Compra(models.Model):
     iva27 = models.DecimalField(max_digits=12, decimal_places=2, editable=False, blank=True, null=True)
     percepcion_iva = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     exento = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
-    ingresos_brutos = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+    ingresos_brutos_otros = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+    ingresos_brutos_cordoba = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     impuesto_interno = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     redondeo = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     #total = models.DecimalField(max_digits=12, decimal_places=2, editable=False, blank=True, null=True)
@@ -785,7 +784,11 @@ class Compra(models.Model):
     
     def __unicode__(self):
         return "Comprobante %s con fecha %s" %(self.identificador_completo,self.fecha_dd_mm_aaaa)
-    
+
+    @property
+    def ingresos_brutos(self):
+        return self.ingresos_brutos_cordoba+self.ingresos_brutos_otros
+
     @property
     def pagado(self):
         print self.saldo
@@ -793,7 +796,7 @@ class Compra(models.Model):
     
     @property
     def total(self):
-        return self.neto+self.iva+self.percepcion_iva+self.exento+self.ingresos_brutos+self.impuesto_interno+self.redondeo
+        return self.neto+self.iva+self.percepcion_iva+self.exento+self.ingresos_brutos_otros+self.ingresos_brutos_cordoba+self.impuesto_interno+self.redondeo
     
     @property
     def estado(self):

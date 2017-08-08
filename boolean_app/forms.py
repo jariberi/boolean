@@ -440,7 +440,8 @@ class ComprobanteCompraForm(ModelForm):
                                                     'data-bv-notempty-message': 'Debe seleccionar un cliente', \
                                                     'data-bv-excluded': 'false'}),
                    'exento': forms.TextInput(attrs={'class': 'form-control'}),
-                   'ingresos_brutos': forms.TextInput(attrs={'class': 'form-control'}),
+                   'ingresos_brutos_otros': forms.TextInput(attrs={'class': 'form-control'}),
+                   'ingresos_brutos_cordoba': forms.TextInput(attrs={'class': 'form-control'}),
                    'percepcion_iva': forms.TextInput(attrs={'class': 'form-control'}),
                    'impuesto_interno': forms.TextInput(attrs={'class': 'form-control'}),
                    'redondeo': forms.TextInput(attrs={'class': 'form-control'}),

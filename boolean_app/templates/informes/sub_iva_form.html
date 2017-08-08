@@ -1,8 +1,8 @@
 {% extends "base.html" %} 
 {% load staticfiles %}
 {% block headExtras %}
-    <link rel="stylesheet" href="{% static "css/chosen.css" %}" type="text/css">
-    <script src="{% static "js/chosen.jquery.js" %}" type="text/javascript"></script>
+    <link rel="stylesheet" href="https://drive.google.com/uc?export=download&id=0B727IIAvoYr_Rnd5cm9Ed2V5QVU" type="text/css">
+    <script src="https://drive.google.com/uc?export=download&id=0B727IIAvoYr_T1BZMVJUN3MxMHM" type="text/javascript"></script>
     <script>
     $(document).ready(function () {
     	$("#fechas").hide();
@@ -11,14 +11,19 @@
     	if (this.value == 'periodo'){
     		$("#fechas").hide();
     		$("#periodo").show();
+			$("#button_exportar").prop('disabled',false);
     	}
     	else if (this.value == 'fechas'){
     		$("#periodo").hide();
     		$("#fechas").show();
+			$("#button_exportar").prop('disabled',true);
     	}
     
     });
     
+	$("#button_exportar").on('click',function(){
+        window.location="/informes/exportar_3685_compras/"+$("#id_periodo").val()
+    });
     
     });
 
@@ -63,6 +68,7 @@
         </div>
         <a class="btn btn-default" role="button" href="{% url "home" %}">Cancelar</a>
         <input class="btn btn-primary" role="button" value="ACEPTAR" type="submit">
+		<input id="button_exportar" class="btn btn-default" value="EXPORTAR RG3485" type="button">
     </form>
         </div>
     {% endblock %}

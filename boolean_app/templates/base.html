@@ -6,6 +6,19 @@
     <title>Sistema Contable - Home</title>
     <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
     <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+	<script>
+	$('form').keypress(function(e){   
+    	if(e == 13){
+      		return false;
+    	}
+  	});
+
+  	$('input').keypress(function(e){
+    	if(e.which == 13){
+      		return false;
+    	}
+  	});
+	</script>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
 	<!-- Optional theme -->
@@ -343,8 +356,8 @@ footer {
             <li class="has-sub"><a href="{% url "listarCobros" %}"><span>Cobranza</span></a>
               <ul>
                 <li><a href="{% url "nuevoRecibo" %}"><span>Nuevo Recibo</span></a></li>
-                  <li><a href="{% url "listarChequesPropios" %}"><span>Cheques Propios</span></a></li>
-                <li class="last"><a href="{% url "listarChequesEnCartera" %}"><span>Cheques de Terceros</span></a></li>
+				<li><a href="{% url "listarChequesPropios" %}"><span>Cheques Propios</span></a></li>
+                <li class="last"><a href="{% url "listarChequesEnCartera" %}"><span>Cheques en cartera</span></a></li>
               </ul>
             </li>
           </ul>
@@ -375,10 +388,10 @@ footer {
                 <li class="has-sub"><a href="#"><span>Cuentas corrientes</span></a>
               <ul>
                 <li><a href="{% url "informeResumenCuenta" %}"><span>Resumen de cuenta</span></a></li>
-                <li><a href="{% url "informeComposicionSaldo" %}"><span>Composicion Saldo</span></a></li>
-                <li class="last"><a href="#"><span>Recibos emitidos</span></a></li>
+                <li class="last"><a href="{% url "informeComposicionSaldo" %}"><span>Composicion Saldo</span></a></li>
               </ul>
             </li>
+			<li class="last"><a href="#"><span>Recibos emitidos</span></a></li>
               </ul>
             </li>
             <li class="has-sub"><a href="#"><span>Compras</span></a>
@@ -387,9 +400,10 @@ footer {
                 <li class="has-sub"><a href="#"><span>Cuentas corrientes</span></a>
               <ul>
                 <li><a href="{% url "proveedoresResumenCuenta" %}"><span>Resumen de cuenta</span></a></li>
-                <li class="last"><a href="{% url "proveedoresComposicionSaldo" %}"><span>Composicion Saldo</span></a></li>
+                <li><a href="{% url "proveedoresComposicionSaldo" %}"><span>Composicion Saldo</span></a></li>
               </ul>
             </li>
+			<li class="last"><a href="{% url "comprasTotalesProv" %}"><span>Compras Por Proveedor</span></a></li>
               </ul>
             </li>
           </ul>

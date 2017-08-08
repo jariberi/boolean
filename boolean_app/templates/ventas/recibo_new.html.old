@@ -16,7 +16,6 @@ $(document).ready(function () {
 	var total_facturas;
 	var total_valores;
 	var total_entregas;
-	var credito;
 	var html_spinner = '<div class="spinner">\
 		  				<div class="rect1"></div>\
 						<div class="rect2"></div>\
@@ -37,19 +36,15 @@ $(document).ready(function () {
 		$(".saldo_factura").each(function(){
 			total_facturas = total_facturas + parseFloat($(this).text().replace("$ ",""))
 		});
-		$("#total_facturas").text("$ "+redondear(total_facturas,2));
-		var tot_desc= total_facturas - credito;
-		$("#total_facturas_credito").text("$ "+redondear(tot_desc,2));
+		$("#total_facturas").text("$ "+redondear(total_facturas,2))
 	}
 	
 	function calcularEntregaFacturas(){
 		total_entregas = 0;
-		$(".entrega_factura").each(function(){
-			total_entregas = total_entregas + parseFloat($(this).text())
+		$(".entrega_input").each(function(){
+			total_entregas = total_entregas + parseFloat($(this).val())
 		});
 		$("#total_entregas").text("$ "+redondear(total_entregas,2))
-		var tot_entr_desc= total_entregas - credito;
-		$("#total_entregas_credito").text("$ "+redondear(tot_entr_desc,2));
 	}
 	
 	function calcularTotalValores(){
@@ -96,6 +91,73 @@ $(document).ready(function () {
         replacement));
         if (el.id) el.id = el.id.replace(id_regex, replacement);
         if (el.name) el.name = el.name.replace(id_regex, replacement);
+    }
+    
+    function addFactura(prefix) {
+        var formCount = parseInt($('#id_' + prefix + '-TOTAL_FORMS').val());
+        // Clone a form (without event handlers) from the first form
+        var row = $("#detalle_comprobantes .item:first").clone(false).get(0);
+        // Insert it after the last form
+        $(row).removeAttr('id').hide().insertAfter("#detalle_comprobantes .item:last").slideDown(300);
+
+		// Remove the bits we don't want in the new row/form
+        // e.g. error messages
+        $(".errorlist", row).remove();
+        $(row).children().removeClass("error");
+          
+        // Relabel or rename all the relevant bits
+        $(row).children().children().each(function () {
+        updateElementIndex(this, prefix, formCount);
+        	$(this).val("");
+            $(this).removeAttr('value');
+        });
+        $(row).children().each(function () {
+        	updateElementIndex(this, prefix, formCount);
+        	$(this).val("");
+            $(this).removeAttr('value');
+        });
+        
+        $(row).find(".entrega_input").on('change',function(){
+	    	calcularEntregaFacturas();
+	    });
+            
+        // Update the total form count
+        $("#id_" + prefix + "-TOTAL_FORMS").val(formCount + 1);
+        
+        return false;
+    }
+    
+    function llenarTablaComprobantes(json_data){
+    	for(i=0;i<json_data.length;i++){
+    		if(i==0){//Uso el item/fila que ya existe
+    			var dateFormat = json_data[i].fields.fecha
+    			var as = new Date(dateFormat);
+    			as.setHours(as.getHours()+3)
+        		var dateFormat = $.datepicker.formatDate('dd/mm/yy', as);
+    			$("#id_cobros-0-fecha").text(dateFormat)
+    			$("#id_cobros-0-nro_factura").text((("000" + json_data[i].fields.punto_venta).slice (-4))+"-"+("000000000" + json_data[i].fields.numero).slice (-8))
+    			$("#id_cobros-0-total").text("$ "+redondear(json_data[i].fields.total,2));
+    			$("#id_cobros-0-saldo").text("$ "+redondear(json_data[i].extras.saldo,2));
+    			$("#id_cobros-0-id_factura").val(json_data[i].pk);
+    			$("#id_cobros-0-pagar").val(redondear(json_data[i].extras.saldo,2));
+    		}
+    		else {
+    			addFactura("cobros");//Copia la primera fila, la que modifique antes y cambia los id
+    			var dateFormat = json_data[i].fields.fecha
+        		var as = new Date(dateFormat);
+    			as.setHours(as.getHours()+3)
+        		var dateFormat = $.datepicker.formatDate('dd/mm/yy', as);
+    			$("#id_cobros-"+i+"-fecha").text(dateFormat)
+    			$("#id_cobros-"+i+"-nro_factura").text((("000" + json_data[i].fields.punto_venta).slice (-4))+"-"+("000000000" + json_data[i].fields.numero).slice (-8))
+    			$("#id_cobros-"+i+"-total").text("$ "+redondear(json_data[i].fields.total,2))
+    			$("#id_cobros-"+i+"-saldo").text("$ "+redondear(json_data[i].extras.saldo,2));
+    			$("#id_cobros-"+i+"-id_factura").val(json_data[i].pk)
+    			$("#id_cobros-"+i+"-pagar").val(redondear(json_data[i].extras.saldo,2));
+    			$("form").bootstrapValidator('addField',$("#id_cobros-"+i+"-pagar"));
+    		}	
+    	}
+    	calcularTotalFacturas();
+    	calcularEntregaFacturas();
     }
     
     function adecuarFilaValor(el){
@@ -188,22 +250,11 @@ $(document).ready(function () {
     			return calcularTotalValores();
     		});
     		
-    		$.get("/api/get_datos_cheque_defecto/"+$("#id_cliente").val(), function(data){
-    			if(data){
-    				var json_val = JSON.parse(data)
-    				if(json_val){
-    					$(row).find(".cheque_fecha_input").val(json_val.fecha)
-    					$(row).find(".cheque_titular_input").val(json_val.razon_social)
-    					$(row).find(".cheque_paguese_a_input").val(json_val.paguese_a)
-    					$(row).find(".cheque_cuit_titular_input").val(json_val.cuit)
-    				}
-    			}
-    		})
-    		
     		//Habilito validadores
     		$("form").bootstrapValidator('addField', $(row).find(".cheque_numero_input"));
     		$("form").bootstrapValidator('addField', $(row).find(".cheque_fecha_input"));
-    		$("form").bootstrapValidator('addField', $(row).find(".cheque_fecha_cobro_input"));
+    		$("form").bootstrapValidator('addField', $(row).find(".cheque_cobro_input"));
+			$("form").bootstrapValidator('addField', $(row).find(".cheque_banco_select"));
     		$("form").bootstrapValidator('addField', $(row).find(".cheque_titular_input"));
     		$("form").bootstrapValidator('addField', $(row).find(".cheque_cuit_titular_input"));
     		$("form").bootstrapValidator('addField', $(row).find(".cheque_paguese_a_input"));
@@ -212,7 +263,19 @@ $(document).ready(function () {
     		$("form").bootstrapValidator('addField', $(row).find(".transferencia_numero_operacion_input"));
     		$("form").bootstrapValidator('addField', $(row).find(".transferencia_cuenta_destino_select"));
     		$("form").bootstrapValidator('addField', $(row).find(".monto_input"));
-    
+			
+			$.get("/api/get_datos_cheque_defecto/"+$("#id_cliente").val(), function(data){
+    			if(data){
+    				var json_val = JSON.parse(data)
+    				if(json_val){
+    					$(row).find(".cheque_fecha_input").val(json_val.fecha)
+    					$(row).find(".cheque_titular_input").val(json_val.razon_social)
+    					$(row).find(".cheque_paguese_a_input").val(json_val.paguese_a)
+    					$(row).find(".cheque_cuit_input").val(json_val.cuit)
+    				}
+    			}
+			})	
+			
             // Update the total form count
             $("#id_" + prefix + "-TOTAL_FORMS").val(formCount + 1);
         } // End if
@@ -230,49 +293,65 @@ $(document).ready(function () {
     $("input[type='text'], select").each(function() {
 		$(this).addClass("form-control");
 		});
-  
-    var cli = $("#id_cliente").val()
-    $.get("/api/get_credito_valores/"+cli, function(data){
-		if (data) {
-			var json_val = JSON.parse(data)
-			if (json_val) {
-				//var html = 'A CREDITO: $<label id="monto_a_credito">'+json_val.pendiente+'</label>'
-				//$("#a_credito").html(html).show();
-				//calcularTotalValores();
-				credito = json_val.pendiente;
-    			$(".a_credito").html("$ -"+json_val.pendiente);
-    			calcularTotalFacturas();
-    			calcularEntregaFacturas();
-				//$("#id_credito_anterior").val(json_val.pendiente)
-			}
-		}
-		else {
-			//$("#a_credito").hide();
-			$(".a_credito").html("$ 0.00");
-    		credito = 0;
-    		calcularTotalFacturas();
-    		calcularEntregaFacturas();
-			}//$("#id_credito_anterior").val("0.00")}
-	});
-    $.get("/api/get_datos_cheque_defecto/"+cli, function(data){
-		if(data){
-			var json_val = JSON.parse(data)
-			if(json_val){
-				$(".cheque_fecha_input").val(json_val.fecha)
-				$(".cheque_titular_input").val(json_val.razon_social)
-				$(".cheque_paguese_a_input").val(json_val.paguese_a)
-				$(".cheque_cuit_titular_input").val(json_val.cuit)
-			}
-		}
-	})
     
-    adecuarFilaValor($("#id_valores-0-tipo"))
+    $("#detalle_comprobantes").hide();
+    $("#sin_comprobantes").hide();
+    $(".seccion_transferencia").hide();
+    $(".no_se_necesita").hide();
     
-    $("input[type='hidden'][name='cliente']").val($("#id_cliente").val())
+    $("#id_cliente").change(function() {
+    	    $("#id_cobros-TOTAL_FORMS").val(1);
+    	    var todosmenosuno = $("#detalle_comprobantes .item").slice(1);
+    	    todosmenosuno.each(function() {
+    	    	this.remove();
+    	    });
+    	    var cli = $(this).val();
+    		$.get("/api/get_facturas_pendiente_pago/"+cli, function(data) {
+    		var json_data = JSON.parse(data)
+    		if (json_data.length > 0) {
+    				$("#seleccione_una_empresa").hide();
+    				$("#detalle_comprobantes").show();
+    				$("#sin_comprobantes").hide();	
+    				llenarTablaComprobantes(json_data);
+    			}
+    		else{$("#sin_comprobantes").show();
+    			 $("#seleccione_una_empresa").hide();
+    			 $("#detalle_comprobantes").hide();} 
+			});
+    		$.get("/api/get_credito_valores/"+cli, function(data){
+    			if (data) {
+    				var json_val = JSON.parse(data)
+    				if (json_val) {
+    					var html = 'A CREDITO: Cheque num: '+json_val.num_cheque+' - Monto credito: <label id="monto_a_credito">'+json_val.pendiente+'</label>'
+    					$("#a_credito").html(html).show();
+    					calcularTotalValores();
+    					//$("#id_credito_anterior").val(json_val.pendiente)
+    				}
+    			}
+    			else {$("#a_credito").hide();}//$("#id_credito_anterior").val("0.00")}
+    		
+			$.get("/api/get_datos_cheque_defecto/"+cli, function(data){
+    			if(data){
+    				var json_val = JSON.parse(data)
+    				if(json_val){
+    					$(".cheque_fecha_input").val(json_val.fecha)
+    					$(".cheque_titular_input").val(json_val.razon_social)
+    					$(".cheque_paguese_a_input").val(json_val.paguese_a)
+    					$(".cheque_cuit_titular_input").val(json_val.cuit)
+    				}
+    			}
+    		})
+			
+			});
+    });
     
     // Evento de cambio de seleccion de tipo de valor
     $(".tipo_valor_select").change(function() {
     	return adecuarFilaValor(this);
+    });
+    
+    $(".entrega_input").on('change',function(){
+    	calcularEntregaFacturas();
     });
     
     $(".monto_input").change(function() {
@@ -332,6 +411,14 @@ $(document).ready(function () {
     					if (options) {return true} else {return false}
     				}
     			}
+    		}
+    	},
+    	entrega:{
+    		group:'td',
+    		selector:'.entrega_input',
+    		validators:{
+    			notEmpty:{message:'Debe ingresar el monto a cancelar, ingrese 0.00 para no cancelar'},
+    			numeric:{message:'Debe ingresar solo numeros'}
     		}
     	}
     	}
@@ -463,7 +550,7 @@ form .form-control-feedback {
         			<h4 class="modal-title">Error</h4>
         </div>
         <div class="modal-body">
-          <p>El total declarado como entregado supera al total de los valores. Verifique los datos ingresados.</p>
+          <p>El total entregado supera al total de los valores. Verifique los datos ingresados.</p>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-default" data-dismiss="modal">Cerrar</button>
@@ -512,7 +599,6 @@ form .form-control-feedback {
       				</div>
       				<div class="form-group">
       					<label class="col-md-1 control-label" for="id_cliente">Cliente:</label>
-      					<input type="hidden" name="cliente"></input>
       					<div class="col-md-5">{{ reciboForm.cliente }} </div>
       				</div>
       			</div>
@@ -522,6 +608,8 @@ form .form-control-feedback {
   			<div class="panel-body">
   				{{ cobroFormset.management_form }}
   				<div class="form-group">
+  					<div class="col-md-12" id="seleccione_una_empresa">Seleccione una empresa para ver los comprobantes.</div>
+  					<div class="col-md-12" id="sin_comprobantes">La empresa seleccionada no presenta ventas pendientes de pago.</div>
   					<table class="table table-condensed" id="detalle_comprobantes">
   					<thead>
     				<tr id="encabezado_detalle_comprobantes">
@@ -534,14 +622,12 @@ form .form-control-feedback {
     			<tbody>
     				{% for formu in cobroFormset.forms %}
     				<tr class="item">
-    					{% load l10n %}
     					{{ formu.id_factura }}
-    					<td><label class="fecha_factura" id="id_cobros-0-fecha">{{venta.fecha|date:"d/m/Y"}}</label></td>
-    					<td><label class="numero_factura" id="id_cobros-0-nro_factura">{{venta.pto_vta_num_full}}</label></td>
-    					<td><label class="total_factura" id="id_cobros-0-total">{{venta.TOTAL|unlocalize}}</label></td>
-    					<td><label class="saldo_factura" id="id_cobros-0-saldo">{{venta.TOTAL|unlocalize}}</label></td>
-    					<td><label class="entrega_factura" id="id_cobros-0-entrega">{{venta.TOTAL|unlocalize}}</label></td>
-    					<td>{{formu.pagar}}</td>
+    					<td><label class="fecha_factura" id="id_cobros-0-fecha">12/04/1986</label></td>
+    					<td><label class="numero_factura" id="id_cobros-0-nro_factura">0003-00000045</label></td>
+    					<td><label class="total_factura" id="id_cobros-0-total">$1598.45</label></td>
+    					<td><label class="saldo_factura" id="id_cobros-0-saldo">$1598.45</label></td>
+    					<td>{{formu.pagar.errors}}{{formu.pagar}}</td>
     				</tr>
     				{% endfor %}
     			</tbody>
@@ -549,23 +635,9 @@ form .form-control-feedback {
     				<th></th>
     				<th></th>
     				<th></th>
-    				<th><label id="total_facturas">{{venta.TOTAL|unlocalize}}</label></th>
-    				<th><label id="total_entregas">{{venta.TOTAL|unlocalize}}</label></th>
-    			</tr>
-    			<tr>
-    					<th></th>
-    					<th></th>
-    					<th>A CREDITO</th>
-    					<th><label class="a_credito"></label></th>
-    					<th><label class="a_credito"></label></th>
-    				</tr>
-    				<tr>
-    					<th></th>
-    					<th></th>
-    					<th></th>
-    					<th><label id="total_facturas_credito"></label></th>
-    					<th><label id="total_entregas_credito"></label></th>
-    				</tr></tfoot>
+    				<th><label id="total_facturas"></label></th>
+    				<th><label id="total_entregas"></label></th>
+    			</tr></tfoot>
     			</table>
     			</div></div>
     </section>

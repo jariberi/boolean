@@ -1276,7 +1276,7 @@ def resumen_cuenta(request):
                 cli = resumen.cleaned_data['cliente'] 
             fd = resumen.cleaned_data['desde']
             fh = resumen.cleaned_data['hasta']           
-            resp = HttpResponse(mimetype='application/pdf')
+            resp = HttpResponse(content_type='application/pdf')
             #detalle=[{'id':cli.id,'razon_social':cli.razon_social,'detalle_comprobantes':[]}]
             detalle=[]
             #Defino las consultas Q
@@ -1353,7 +1353,7 @@ def comp_saldo(request):
             tip = comp.cleaned_data['tipo']
             if lis == "UNO":
                 cli = comp.cleaned_data['cliente']            
-            resp = HttpResponse(mimetype='application/pdf')
+            resp = HttpResponse(content_type='application/pdf')
             #detalle=[{'id':cli.id,'razon_social':cli.razon_social,'detalle_comprobantes':[]}]
             detalle=[]
             #Defino las consultas Q
@@ -1375,10 +1375,10 @@ def comp_saldo(request):
                 factynd_c=factynd.filter(cliente__id=cliente)
                 saldo_t=0
                 for jorge in factynd_c:
-                    saldo_t+=jorge.saldo()
+                    saldo_t+=jorge.saldo
                     deta_comp.append({'cliente_id':cliente,'razon_social':Cliente.objects.get(id=cliente).razon_social,\
                                       'fecha':jorge.fecha,'tipo':jorge.tipo,'numero':jorge.pto_vta_num_full,\
-                                      'total_c':jorge.total,'saldo_c':jorge.saldo(),"saldo_t":saldo_t})
+                                      'total_c':jorge.total,'saldo_c':jorge.saldo,"saldo_t":saldo_t})
                     deta_comp[len(deta_comp)-1]['detalle_venta']=[]
                     if tip=="DETALLADO":
                         for det in jorge.detalle_venta_set.all():
@@ -1433,8 +1433,8 @@ def compra_new(request):
             factura.iva105 = iva[10.5]
             factura.iva27 = iva[27]
             saldo = factura.neto+factura.iva21+factura.iva105+factura.iva27+\
-                    factura.percepcion_iva+factura.exento+factura.ingresos_brutos+\
-                    factura.impuesto_interno+factura.redondeo
+                    factura.percepcion_iva+factura.exento+factura.ingresos_brutos_otros+\
+                    factura.impuesto_interno+factura.redondeo+factura.ingresos_brutos_cordoba
             #set_trace()
             if factura.tipo.startswith("NC"):
                 factura.neto = factura.neto*-1
@@ -1443,7 +1443,8 @@ def compra_new(request):
                 factura.iva27 = factura.iva27*-1
                 factura.percepcion_iva = factura.percepcion_iva*-1
                 factura.exento = factura.exento*-1
-                factura.ingresos_brutos = factura.ingresos_brutos*-1
+                factura.ingresos_brutos_otros = factura.ingresos_brutos_otros*-1
+                factura.ingresos_brutos_cordoba = factura.ingresos_brutos_cordoba * -1
                 factura.impuesto_interno = factura.impuesto_interno*-1
                 factura.redondeo = factura.redondeo*-1
                 subtotal = subtotal*-1
@@ -1520,7 +1521,7 @@ def subdiario_iva_compras(request):
             fd = subdiario.cleaned_data['fecha_desde']
             fh = subdiario.cleaned_data['fecha_hasta']
             fi = subdiario.cleaned_data['folio_inicial']            
-            resp = HttpResponse(mimetype='application/pdf')
+            resp = HttpResponse(content_type='application/pdf')
             if per:
                 compras = Compra.objects.filter(periodo=per).order_by('fecha')
                 #set_trace()
@@ -1611,6 +1612,8 @@ def orden_pago_new(request):
                             cheque3=ChequeTercero.objects.get(pk=valor.cleaned_data['id_cheque_tercero'])
                             cheque3.pendiente_para_orden_pago=0
                             cheque3.en_cartera=False
+                            cheque3.observaciones = "Entregado a %s, en orden de pago %s" % (
+                            orden_pago.proveedor, orden_pago.numero)
                             cheque3.orden_pago=orden_pago
                             cheque3.save()
                         elif valor.cleaned_data['tipo']=='CHP':
@@ -1951,7 +1954,7 @@ def proveedores_comp_saldo(request):
             tip = comp.cleaned_data['tipo']
             if lis == "UNO":
                 pro = comp.cleaned_data['proveedor']            
-            resp = HttpResponse(mimetype='application/pdf')
+            resp = HttpResponse(content_type='application/pdf')
             #detalle=[{'id':pro.id,'razon_social':pro.razon_social,'detalle_comprobantes':[]}]
             detalle=[]
             #Defino las consultas Q

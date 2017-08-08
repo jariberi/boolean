@@ -128,8 +128,8 @@ class IVACompras(Report):
                     Label(text="IVA(21%)", top=2.9*cm, left=18.4*cm, width=1.7*cm, style={'fontName':'Helvetica-Bold','fontSize':10,'alignment':TA_CENTER}),
                     Label(text="IVA(27%)", top=2.9*cm, left=20.1*cm, width=1.8*cm, style={'fontName':'Helvetica-Bold','fontSize':10,'alignment':TA_CENTER}),
                     Label(text="Total", top=2.9*cm, left=21.9*cm, width=2.2*cm, style={'fontName':'Helvetica-Bold','fontSize':10,'alignment':TA_CENTER}),
-                    Label(text="P. IVA", top=2.9*cm, left=24.1*cm, width=1.8*cm, style={'fontName':'Helvetica-Bold','fontSize':10,'alignment':TA_CENTER}),
-                    Label(text="IIBB", top=2.9*cm, left=25.9*cm, width=1.8*cm, style={'fontName':'Helvetica-Bold','fontSize':10,'alignment':TA_CENTER}),
+                    Label(text="IIBB Cba", top=2.9*cm, left=24.1*cm, width=1.8*cm, style={'fontName':'Helvetica-Bold','fontSize':10,'alignment':TA_CENTER}),
+                    Label(text="IIBB Otros", top=2.9*cm, left=25.9*cm, width=1.8*cm, style={'fontName':'Helvetica-Bold','fontSize':10,'alignment':TA_CENTER}),
                     Line(left=0, top=3.5*cm, right = 29.7*cm, bottom = 3.5*cm),]
     
     class band_page_footer(ReportBand):
@@ -149,8 +149,8 @@ class IVACompras(Report):
                     ObjectValue(attribute_name='iva21', get_value=lambda instance: "%.2f" %instance.iva21, top=0, left=18.3*cm, width=1.8*cm, style={'alignment':TA_RIGHT}),
                     ObjectValue(attribute_name='iva27', get_value=lambda instance: "%.2f" %instance.iva27, top=0, left=20.1*cm, width=1.8*cm, style={'alignment':TA_RIGHT}),
                     ObjectValue(attribute_name='total',  get_value=lambda instance: "%.2f" %instance.total, top=0, left=21.9*cm, width=2.2*cm, style={'alignment':TA_RIGHT}),
-                    ObjectValue(attribute_name='percepcion_iva', get_value=lambda instance: "%.2f" %instance.percepcion_iva, top=0, left=24.1*cm, width=1.8*cm, style={'alignment':TA_RIGHT}),
-                    ObjectValue(attribute_name='ingresos_brutos', get_value=lambda instance: "%.2f" %instance.ingresos_brutos, top=0, left=25.9*cm, width=1.8*cm, style={'alignment':TA_RIGHT}),
+                    ObjectValue(attribute_name='ingresos_brutos_cordoba', get_value=lambda instance: "%.2f" %instance.ingresos_brutos_cordoba, top=0, left=24.1*cm, width=1.8*cm, style={'alignment':TA_RIGHT}),
+                    ObjectValue(attribute_name='ingresos_brutos_otros', get_value=lambda instance: "%.2f" %instance.ingresos_brutos_otros, top=0, left=25.9*cm, width=1.8*cm, style={'alignment':TA_RIGHT}),
                     ]
         
     class band_summary(ReportBand):
@@ -163,8 +163,8 @@ class IVACompras(Report):
             ObjectValue(attribute_name='iva21', top=0.1*cm, left=18.3*cm,width=1.8*cm, action=FIELD_ACTION_SUM, style={'alignment':TA_RIGHT}),
             ObjectValue(attribute_name='iva27', top=0.1*cm, left=20.1*cm,width=1.8*cm, action=FIELD_ACTION_SUM, style={'alignment':TA_RIGHT}),
             ObjectValue(attribute_name='total', top=0.1*cm, left=21.9*cm, width=2.2*cm, action=FIELD_ACTION_SUM, style={'alignment':TA_RIGHT}),
-            ObjectValue(attribute_name='percepcion_iva', top=0.1*cm, left=24.1*cm, width=1.8*cm, action=FIELD_ACTION_SUM, style={'alignment':TA_RIGHT}),
-            ObjectValue(attribute_name='ingresos_brutos', top=0.1*cm, left=25.9*cm, width=1.8*cm, action=FIELD_ACTION_SUM, style={'alignment':TA_RIGHT}),
+            ObjectValue(attribute_name='ingresos_brutos_cordoba', top=0.1*cm, left=24.1*cm, width=1.8*cm, action=FIELD_ACTION_SUM, style={'alignment':TA_RIGHT}),
+            ObjectValue(attribute_name='ingresos_brutos_otros', top=0.1*cm, left=25.9*cm, width=1.8*cm, action=FIELD_ACTION_SUM, style={'alignment':TA_RIGHT}),
             ]
         borders = {'all': RoundRect(radius=4, fill_color=grey, fill=True)}   
 

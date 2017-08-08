@@ -16,7 +16,6 @@ $(document).ready(function () {
 	var total_facturas;
 	var total_valores;
 	var total_entregas;
-	var credito;
 	var html_spinner = '<div class="spinner">\
 		  				<div class="rect1"></div>\
 						<div class="rect2"></div>\
@@ -44,8 +43,8 @@ $(document).ready(function () {
 	
 	function calcularEntregaFacturas(){
 		total_entregas = 0;
-		$(".entrega_factura").each(function(){
-			total_entregas = total_entregas + parseFloat($(this).text())
+		$(".entrega_input").each(function(){
+			total_entregas = total_entregas + parseFloat($(this).val())
 		});
 		$("#total_entregas").text("$ "+redondear(total_entregas,2))
 		var tot_entr_desc= total_entregas - credito;

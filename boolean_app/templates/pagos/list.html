@@ -10,19 +10,19 @@
 
 $(document).ready(function() {
     $('#pagos').dataTable( {
-        "order": [[1, "desc"]],
-        "orderMulti": false,
-        "columnDefs": [
-                    {
-                        "targets": [0, 1, 2],
-                        "orderable": true,
-                        "searchable": true
-                    },
-                    {
-                        "targets": [3, 4, 5, 6],
-                        "orderable": false,
-                        "searchable": false
-                    }],
+		"order": [[1, "desc"]],
+			"orderMulti": false,
+			"columnDefs": [
+						{
+							"targets": [0, 1, 2],
+							"orderable": true,
+							"searchable": true
+						},
+						{
+							"targets": [3, 4, 5, 6],
+							"orderable": false,
+							"searchable": false
+						}],
         "language": {
                 "url": "//cdn.datatables.net/plug-ins/725b2a2115b/i18n/Spanish.json"
             },
